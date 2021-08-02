@@ -5,6 +5,7 @@ output: html_notebook
 
 
 # Rstudio cloud
+
 [Rstudio.cloud](https://Rstudio.cloud) is a website that lets you use a fully-functional instance of rstudio in your browser, without having to install anything on your own computer. This makes it easy to jump right into doing data analysis with R so you can focus on learning rather than IT.
 
 ## Creating an account
@@ -25,7 +26,7 @@ Click on the project "PROJECT NAME" to see an example.
 
 # Rstudio
 
-[_Learning Statistics with R_ ](https://learningstatisticswithr.com/lsr-0.6.pdf) (sections 3.1.5 to 4.13) is your main resource for the basics of navigating R and Rstudio. But here are some quick pointers that might be useful.
+[_Learning Statistics with R_ ](https://learningstatisticswithr.com/lsr-0.6.pdf) (Sections 3.1.5 to 4.13) is your main resource for the basics of navigating R and Rstudio. But here are some quick pointers that might be useful.
 
 ## Interface Panes
 
@@ -79,13 +80,13 @@ Help is never far away when you are working in rstudio. To pull up help and othe
 
 Let's take R out for a very quick spin.
 
-## Loading packages
+## Loading packages 📦
 
 We'll begin by loading in the [tidyverse](https://www.tidyverse.org/) set of R packages. 
 
 An R "package" is a set of functions and tools. There are thousands of packages available for accompmlishing all kinds of tasks. Some are generally applicable, and some are really specific and special-purpose. 
 
-The command below is actually a shortcut for loading a set of important packages that are often used together as part of the "tidy universe" ("tidyverse"). Among these are `tibble`, `dplyr`, `ggplot2` and more---we'll dig into all of these packages in the next weeks.
+The command below is actually a shortcut for loading a set of important packages that are often used together as part of the "tidy universe" ("tidyverse"). Among these are `tibble`, `dplyr`, `ggplot2`, and more---we'll dig into all of these packages in the next weeks.
 
 ```{r load-tidyverse, echo=T}
 library(tidyverse)
@@ -103,9 +104,15 @@ stroop <- read_delim("https://raw.github.com/Lakens/Stroop/master/stroop.csv", d
 
 We can take a peek at this data using the `head()` function, which will show us the first 6 rows of the dataset.
 
-```{r}
+```{r, echo=T}
 head(stroop)
 ```
+There are four variables:
+
+* PPNR: the participant number
+* Congruent: the total time taken to name ink colors on congruent trials
+* Incongruent: the total time taken to name ink colors on incongruent trials
+* Year: the year of participation (this has data from two classes)
 
 ## Data Munging
 
@@ -113,11 +120,13 @@ This data is in a "wide" format, where each row indicates a participants' times 
 
 ```{r}
 stroop %>% 
-  gather(trial_type, RT, Congruent, Incongruent) 
+  gather(trial_type, RT, Congruent, Incongruent) %>% 
+  arrange(PPNR) %>% 
+  head()
 ```
-Now there are two rows per subject, one with their congruent trial times and one with their incongruent times. Rearranging things like this is often useful for plotting.
+Now there are two rows per subject, one with their congruent trial times and one with their incongruent times. Rearranging things like this is often useful.
 
-I am also using the `%>%` operator (pipe) to string together these commands. This let's you "pipe" the results of one command in as the first argument of new command. That is, `stroop %>% head()` is equivalent to `head(stroop)`. 
+I am also using the `%>%` operator (pipe) to string together these commands. This let's you "pipe" the results of one command in as the first argument of new command. That is, `stroop %>% head()` is equivalent to `head(stroop)`. To help you see what `gather()` has done, I've also sorted the rows by participant ID using `arrange(PPNR)` and again printed out the first 6 rows with `head()`.
 
 You will get lots more explanation and practice with these tools as you work through the exercises in [_R for Data Science_](https://r4ds.had.co.nz/).
 
@@ -125,21 +134,21 @@ You will get lots more explanation and practice with these tools as you work thr
 
 Before we do any statistics on this data, let's make a plot to visualize what the data look like. We can combine our data munging with the `ggplot2` package plotting tools to better understand our data. Below I use a "boxplot" to get a sense of the distribution of the response time values for the two trial types.
 
-```{r}
-stroop %>% 
+```{r, echo=T}
+mini_stroop %>% 
   gather(trial_type, RT, Congruent, Incongruent) %>% 
   ggplot(aes(x=trial_type, y=RT)) +
   geom_boxplot(width=.5)
 ```
-Looking at the plot, it's very clear that participants are slower on the incongruent trials than on the congruent ones. This is an effect you can see with the naked-eye, so to speak. Once you get used to looking at data visualizations like this, you will start being satisfied just with the plots, and have no need for statistics at all!
+Looking at the plot, it should be very clear that participants have longer response times on the incongruent trials than on the congruent ones. This is an effect you can see with the naked-eye, so to speak. Once you get used to looking at data visualizations like this, you will start being satisfied just with the plots, and sometimes have no need for statistics at all!
 
 ## Statistics
 
-Okay, okay, fine let's do a statistical test anyhow. Below is the code to conduct a simple paired t-test. Using the `$` lets me take a variable from the `stroop` data and pass it to the `t.test()` function. I do this for the two trial types in the `stroop` data: `stroop$Congruent` gives a vector of values for the congruent trials and `stroop$Incongruent` gives a vector of values for the incongruent trials. Then I also set the argument `paired=TRUE` so that we perform a paired rather than independent-samples t-test. 
+Okay, okay, fine let's do a statistical test anyhow. Below is the code to conduct a simple paired t-test. Using the `$` lets me take a variable from the `stroop` data and pass it to the `t.test()` function. I do this for the two trial types in the `stroop` data: `stroop$Congruent` gives a vector of values for the congruent trials and `stroop$Incongruent` gives a vector of values for the incongruent trials. Then, I also set the argument `paired=TRUE` in the `t.test()` function so that we perform a paired rather than independent-samples t-test. 
 
 Passing that all to `t.test()` prints out our results.
 
-```{r}
+```{r, echo=T}
 t.test(stroop$Congruent, stroop$Incongruent, paired=TRUE)
 ```
 
@@ -147,7 +156,7 @@ The result is significant. Stars! Stars for everyone!
 
 ## Scaling things up
 
-What's great about working with R is that we use the exact same tools to handle simple datasets like our Stroop data as we do for larger data sets. The tidyverse packages include a lot of useful functions, and they also include some datasets that can be useful for demonstration and testing purposes. We'll load one of them, the `billboard` dataset of the Billboard top 100 rankings in the year 2000.
+What's great about working with R is that we use the exact same tools to handle larger datases as we do for simple datasets like our Stroop data. The tidyverse packages include a lot of useful functions, and they also include some datasets that can be useful for demonstration and testing purposes. We'll load one of them, the `billboard` dataset of the Billboard top 100 rankings in the year 2000. This dataset isn't large by any means, but it is larger than the Stroop data with 317 observations of 79 variables.
 
 ```{r, echo=T}
 data(billboard)
@@ -160,7 +169,7 @@ head(billboard)
 ```
 ### Munging
 
-Again, this data is in a "wide" format, where each track from the Billboard top 100 occupies a row, and its ranking each week is a separate variable. We use the same `gather()` command as before, though instead of writing out all the variables to gather, we use the shortcut `wk1:wk76` to gather weeks 1 through 76.
+This data is again in a "wide" format, where each track from the Billboard top 100 occupies a row, and its ranking each week is a separate variable. We use the same `gather()` command as before, though instead of writing out all the variables to gather, we use the shortcut `wk1:wk76` to gather weeks 1 through 76.
 
 ```{r, echo=T}
 billboard %>% 
@@ -168,6 +177,7 @@ billboard %>%
   gather(week, ranking, wk1:wk76) %>% 
   head(9)
 ```
+
 To make it easier to see what's going on, I've also first filtered for only Britney Spears' tracks (`filter(artist == "Spears, Britney")`), and I'm showing you the first 9 records (using `head(9)`). Remember the `%>%` pipes what's on the left into the function on the right as the first argument, so `x %>% head(9)` is like `head(x,9)`). 
 
 ### Plotting
@@ -196,6 +206,7 @@ billboard %>%
     title="Billboard top 100 plotting example"
     )  # create nicer plot labels
 ```
+
 Most of these tracks show a similar pattern of increasing popularity, a peak at different spots on the chart for different lengths of time, and then a fairly quick falling off. Two tracks, DMX's "Party Up" and Dre's "The Next Episode" fell off more rapidly than others though, dropping nearly 50 places to fall off the top 100 all in one week. 
 
 What does that tell us about the music industry? I have no idea! But for a domain expert, visualization of this sort can be a useful kind of data sleuthing.

@@ -1,0 +1,226 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+
+df_feat <- read_delim("https://search.bwh.harvard.edu/new/data_sets/RVvGV.data.10Ss.ForWeb.txt", delim="\t")
+df_conj <- read_delim("https://search.bwh.harvard.edu/new/data_sets/Full%20Data%20Sets%20to%20Post/RVvRHGV.txt", delim="\t")
+
+df_conj %>% 
+  group_by(Subject) %>% 
+  filter(Error==0, percent_rank(`RT(ms)`) < .99) %>%
+  ggplot(aes(x=factor(Subject), y = `RT(ms)`)) +
+  geom_violin()
+
+df_feat %>% 
+  filter(BlockReport=="experiment", CondReport == "RVvGV") %>% 
+  filter(error==0) %>% 
+  group_by(sinit,setsize, message) %>% 
+  group_by(sinit) %>% 
+  filter(percent_rank(RT) < .99) %>% 
+  ggplot(aes(x=factor(sinit), y = `RT`)) +
+  geom_violin()
+
+df <- df_feat %>% 
+  filter(BlockReport=="experiment", CondReport == "RVvGV") %>% 
+  filter(error==0) %>%
+  group_by(sinit) %>%
+  filter(percent_rank(RT) < .99) %>%
+  group_by(sinit, setsize, message) %>% 
+  summarize(rt = mean(RT), se = sd(RT)/sqrt(n()-1)) %>% 
+  mutate(condition = "feature") %>% 
+  rename(subject=sinit) %>% 
+  bind_rows(
+    df_conj %>%
+    filter(Condition == "RVvRHGV") %>%
+    group_by(Subject) %>% 
+    filter(Error==0, percent_rank(`RT(ms)`) < .99) %>%
+    group_by(Subject, setsize, message) %>%
+    summarize(rt = mean(`RT(ms)`), se = sd(`RT(ms)`)/sqrt(n()-1)) %>%
+    rename(subject=Subject) %>% 
+    mutate(condition="conjunction", subject=as.character(subject))
+  ) %>% filter(subject!="rm", subject!="4")
+```
+
+```{r}
+df %>% ungroup() %>% count(message)
+
+df %>% 
+  ggplot(aes(x=subject, y = rt)) +
+  geom_boxplot()
+
+df %>% 
+  count(subject)
+```
+```{r}
+
+se <- function(x){
+  sd(x)/sqrt(length(x))
+}
+
+df %>% 
+  group_by(subject, setsize, message) %>%
+  filter(message=="HIT") %>%
+  group_by(condition, setsize) %>%
+  # summarize(m = mean(rt), se = sd(rt)/sqrt(n())) %>%
+  summarize(M = mean(rt), SE = se(rt)) %>%
+  ggplot(aes(x=setsize, y = M, ymin = M - SE, ymax = M + SE, color=condition)) +
+  geom_pointrange() +
+  theme_bw() +
+  scale_x_continuous(breaks=c(3,6,12,18))
+```
+
+
+```{r}
+# df_feat %>% 
+#   filter(BlockReport=="experiment", CondReport == "RVvGV") %>% 
+#   filter(error==0) %>% 
+#   group_by(sinit,setsize, message) %>% 
+#   summarize(rt = mean(RT), se = sd(RT)/sqrt(n()-1)) %>% 
+#   filter(message=="HIT") %>% 
+#   ggplot(aes(x=factor(setsize), y = rt)) +
+#   geom_boxplot()
+# 
+# df_conj %>%
+#   filter(Condition == "RVvRHGV") %>%
+#   filter(Error==0) %>%
+#   group_by(Subject, setsize, message) %>%
+#   summarize(rt = mean(`RT(ms)`), se = sd(`RT(ms)`)/sqrt(n()-1)) %>%
+#   filter(message=="HIT") %>% 
+#   ggplot(aes(x=factor(setsize), y = rt)) +
+#   geom_boxplot()
+
+df %>% 
+  # filter(Error==0) %>%
+  group_by(subject, setsize, message) %>%
+  # summarize(rt = mean(`RT(ms)`), se = sd(`RT(ms)`)/sqrt(n()-1)) %>%
+  filter(message=="HIT") %>%
+  # group_by(condition, setsize) %>% 
+  # summarize(m = mean(rt), se = sd(rt)/sqrt(n()-1)) %>%
+  ggplot(aes(x=setsize, y = rt, color=condition, fill=condition)) +
+  geom_jitter(position=position_jitterdodge(jitter.width=.25, dodge.width = .75), alpha=.75) +
+  geom_smooth(method="lm",alpha=.1, size=.5) +
+  theme_bw() +
+  scale_x_continuous(breaks=c(3,6,12,18))
+```
+
+```{r}
+df %>% 
+  
+  # filter(error==0) %>%
+  # group_by(subject, setsize, message) %>%
+  # summarize(rt = mean(`RT(ms)`), se = sd(`RT(ms)`)/sqrt(n()-1)) %>%
+  filter(message=="HIT") %>%
+  # filter(condition=="conjunction") %>% 
+  # group_by(condition, setsize) %>% 
+  # summarize(m = mean(rt), se = sd(rt)/sqrt(n()-1)) %>%
+  ggplot(aes(x=factor(setsize), y = rt, fill=condition, color=condition)) +
+  geom_violin(width=.5, trim = FALSE, alpha=.25) +
+  geom_jitter(position=position_jitterdodge(jitter.width=.1, dodge.width = .5), alpha=.75) +
+  # geom_smooth(method="lm",alpha=.1, size=.5) +
+  theme_bw()
+  # scale_x_continuous(breaks=c(3,6,12,18))
+
+# df %>% 
+#   filter(message=="HIT") %>% 
+#   ggplot(aes(x=rt)) +
+#   geom_histogram() +
+#   # geom_density() +
+#   facet_grid(condition~setsize)
+```
+
+```{r}
+summary(fit <- lm(rt ~ setsize*condition, 
+                  data = df %>% 
+                    filter(message=="HIT") %>% 
+                    mutate(condition = ifelse(condition=="feature",0,1))
+                  )
+        )
+```
+
+```{r}
+df %>% 
+  ungroup() %>% 
+  filter(message=="HIT") %>% 
+  mutate(condition = ifelse(condition=="feature",0,1)) %>% 
+  mutate(predicted = predict(fit)) %>% 
+  mutate(resid = rt-predicted) %>% 
+  ggplot(aes(x=resid)) +
+  geom_histogram(bins=15) +
+  labs(title="histogram of residuals")
+```
+
+
+## Jevons
+
+```{r}
+jevons <- tribble(
+  ~true_beans, ~correct, ~incorrect,
+  3, 23, 0,
+  4, 65, 0,
+  5, 102, 5,
+  6, 120, 27,
+  7, 113, 43,
+  8, 76, 59,
+  9, 76, 46,
+  10, 46, 61,
+  11, 26, 43,
+  12, 19, 26,
+  13, 6, 20,
+  14, 4, 10,
+  15, 2, 11
+)
+
+# need to find a better visualization format
+# not displaying correctly, can't see that 0% errors is modal estimate
+
+jevons %>% 
+  filter(true_beans < 8) %>% 
+  mutate(sim = map2(correct, incorrect, ~rbeta(1e4, .x+1, .y+1))) %>% # uniform prior
+  unnest(sim) %>% 
+  mutate(sim = 1-sim) %>% 
+  ggplot(aes(x=sim)) +
+  geom_histogram(fill="lightblue", bins=50) +
+  # geom_density(trim=TRUE) +
+  # coord_flip() +
+  facet_grid(rows=vars(true_beans)) +
+  theme_bw() +
+  theme(panel.grid=element_blank()) +
+  # ylim(0,50) +
+  xlim(-.03, .42) +
+  theme(aspect.ratio=1/5) +
+  labs(x = "Error rate")
+  # ggplot(aes(x = factor(true_beans), y = sim)) +
+  # geom_violin(fill="lightblue") +
+  # theme_bw()
+
+```
+We could hold that "the power of numerical discrimination" applies when discrimination is perfect---that's sort of the idea, that you directly perceive the number without error. Of course, to err is human. Even if our perceptual apparatus is essentially perfect, we might still suffer from the odd "brain fart". Jevons did say he excluded trials that were "consciously bad", which we could think means eliminating these sorts of issues and allows for the standard of perfection. But it seems like a strong assumption to imagine he was perfect in this as well.
+
+```{r}
+# I guess one "test" would be, is accuracy for 4 greater than for 5?
+
+beans_4 <- rbeta(1e4, 66, 1)
+beans_5 <- rbeta(1e4, 103, 6)
+
+posterior_prob <- mean(beans_4 > beans_5)
+
+posterior_prob
+```
+
+We can be pretty confident that Jevons' performance with 5 beans is worse than his performance with 4 beans. But, we aren't completely certain.
+
+```{r}
+# but is accuracy for 6 less than accuracy for 5?
+beans_6 <- rbeta(1e4, 120+1, 27+1)
+
+posterior_prob <- mean(beans_5 > beans_6)
+
+posterior_prob
+```
+
+We can be almost completely certain that Jevon's performance for 6 beans is worse than his performance for 5 beans. His "powers of numerical discrimination" have clearly begun to fail. So we could estimate Jevon's powers of numerical discrimination as extending up to 4 to 5 items.

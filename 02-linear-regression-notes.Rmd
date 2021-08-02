@@ -1,0 +1,50 @@
+---
+title: "Regression"
+output: html_notebook
+---
+
+This course is all about models. We want to build models of the “data generating process” behind the data we observe—we want to know “how did this data come to be?” 
+
+Notice that the operative verb is to “build” models. Our models are not “discovered.” They are not part of the reality we hope to understand; but are instead a facsimile that we construct to help us gain understanding. This is what McElreath means by the “small world” of the model, versus the large world of reality.
+
+So, if we are going to build models, then we will need some tools. And the main tool we will focus on in this course is regression.
+
+Linear regression is all about lines—or at least that’s one way to look at it. Like any good subject, there are several ways to interpret and think about regression. This week we’ll consider a few different perspectives on regression, ultimately building up to viewing regression as a type of Bayesian model, of the sort we’ll use to make scientific inferences.
+
+But first: lines.
+
+
+# Linear Regression: geometric interpretation
+
+Say we have a set of points in two dimensions like so:
+
+[scatterplot]
+
+Ultimately we want to ask, how can we draw a line through these points so that it gets as close as possible to all of the points? But first let’s just take a shot and draw a line through these points by hand.
+
+[ scatterplot with hand-drawn line]
+
+The line I just drew can be represented by an equation. You should remember this from high school geometry:
+
+$$ y = A + Bx $$
+
+$A$ is the “intercept,” the place on the y-axis that the line passes through, and $B$ is the slope, the increase in $y$ for every unit increase in $x$.
+
+What about other lines we could draw?
+
+[ scatterplot with 3 hand-drawn lines ]
+
+Here are some other lines we could draw through these same points. Which of these lines are best?
+
+First, take a second to visually inspect them. Just intuitively, it should seem like the purple line is not very good, that the red line is okay, but that the blue line is probably better. How can we quantify how well these lines are drawn through the points?
+
+First it helps to think through why we were drawing these lines in the first place. Was this simply an aesthetic pursuit? “Draw the best looking line”? I didn’t really give you any motivation, and yet here you went drawing lines. Sheep!
+
+Well, one motivation we might have, and perhaps you have already thought of, is _prediction_.
+
+# Regression for prediction
+
+If we have some observations of values on x and values on y, we might want to use further observations of x to predict future observations of y. [example]
+
+Now we can write out what we are doing a bit more explicitly. Our line is actually our predicted values of $y$, which we denote $\hat{y}$. And the best line, is the one that gets the predictions as close to the true values of $y$ as possible!
+
