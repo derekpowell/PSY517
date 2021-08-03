@@ -26,7 +26,7 @@ z
 ## operating on vectors returns vectors
 y + 5 
 
-y < 4 
+y == 4 
 
 ## indexing vectors
 

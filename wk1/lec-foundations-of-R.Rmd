@@ -38,6 +38,7 @@ theme_set(theme_gray(base_size=28))
   * Scripts and automation reduce errors, reduce tedium, and make analyses reproducible
 * Programming is where the \$\$\$ is at
   * Basic programming knowledge is becoming a necessity in industry and academia
+* R has a great community, tons of support, and is really not that hard to learn
 
 ## Kicking ass
 
@@ -62,7 +63,7 @@ I'll show you ...
 * how to plot data
 * how to conduct a statistical test
 
-## Interactive coding demo
+# Interactive coding demo
 
 Let's jump over to Rstudio, open a script, and run some code.
 
@@ -70,10 +71,10 @@ Let's jump over to Rstudio, open a script, and run some code.
 
 R "packages" are collections of code, functions, and data that have been packaged together. Typically, packages support conducting certain types of analyses, making plots, etc.
 
-The most important set of packages we will learn in this course are the `tidyverse` packages.
+The most important set of packages we will learn in this course are the `tidyverse` packages. We can load all of them at once with the command below:
 
 ```{r packages, echo=T}
-library(tidyverse) # ggplot2, readr, dplyr, etc.
+library(tidyverse)
 ```
 
 ## Loading data
@@ -111,10 +112,15 @@ Our `df` object is a dataframe (more specifically, a `tibble`) that consists of 
 
 ```{r indexing-vars, echo=T}
 df$congruent
-mean(df$congruent)
 ```
 
 ## Using and defining functions
+
+We can compute the mean of our congruent trials with:
+
+```{r cong-mean, echo=T}
+mean(df$congruent)
+```
 
 Note that `mean()`, `any()`, and `is.na()` on the previous slides are _functions_ that perform some computation on whatever inputs they are given.
 
@@ -132,45 +138,115 @@ se <- function(x){
   }
 ```
 
+To learn more about this function, try typing `?sqrt` and `?length` into the R console.
+
+::: notes
+Try computing each of the components of this function, sd, sqrt, and length
+:::
+
 ## Computing standard error
 
-Now we can use our function and compare the standard error to the standard deviation. Recall, $n = 48$, so $\sqrt{n}=6.93$.
+Now we can use our function to calculate the standard error.
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+
+### Using our function
 
 ```{r, echo=T}
-sd(df$congruent)
-
 se(df$congruent)
 ```
 
+:::
+::: {.column}
+
+### Checking each piece
+
+```{r, echo=T}
+sd(df$congruent)
+length(df$congruent)
+sqrt(48)
+3.700337 / 6.928203
+```
+
+:::
+::::::::::::::
+
+## Hands-on: Making your own function
+
+Let's make a function to standardize the `congruent` and `incongruent` variables.
+
+Recall our standard error equation and corresponding R function.
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+$$SE = \frac{\sigma}{\sqrt{n}}$$
+:::
+::: {.column}
+```r
+se <- function(x){
+  sd(x) / sqrt(length(x))
+  }
+```
+:::
+::::::::::::::
+
+How would you create a function to standardize a variable based on the equation?
+
+$$Z = \frac{x-\mu}{\sigma}$$
+
+
 ## Data tidying
 
-Lots of data exists in "wide" format, where each row of a data table is a case with many variables. 
+:::::::::::::: {.columns align=center}
+::: {.column}
 
-"Tidy" data is data in "long" format, where each row stores the value for one variable of one case.
+"Tidy" data is data stored in "long" rather than "wide" format.
+
+- __Wide format__: each row of a data table is a case with many variables. 
+- __Long format__: each row stores the value for one variable of one case.
+
+:::
+::: {.column}
+
+### Wide format
+| case | x | y |
+|------|------|------|
+| a    | 2    | 4    | 
+| b    | 3    | 6    | 
+
+### Long format
+| case | variable | value |
+|------|----------|-------|
+| a    | x        | 2     |
+| a    | y        | 4     |
+| b    | x        | 2     |
+| b    | y        | 6     |
+
+:::
+::::::::::::::
+
+
 
 ## From wide to long with `gather()`
 
 Let's convert our data from wide to long format using the `gather()` function and the "pipe" operator ` %>% `.
 
 ```{r wide-to-long, echo=T}
-# convert to long format
 df_long <- df %>% 
   gather(trial_type, rt, congruent, incongruent)
 ```
 
-```{r, rows.print=6}
+```{r}
 # see what happened
 df_long %>% 
   arrange(subj_num) %>% 
   print(n=6)
 ```
 
+## Removing cases with `filter()`
 
-## Selecting cases with `filter()`
-
-Suppose subject #3 called us up with a confession: they were really distracted the day of the experiment and could hardly pay any attention. 
-
-Now that we know that, maybe it's best to remove them from our dataset.
+Suppose participant #3 called us up with a confession: they were really distracted the day of the experiment and could hardly pay any attention. Now that we know that, maybe it's best to remove them from our dataset.
 
 \small
 ```r
@@ -181,9 +257,11 @@ df %>%
 ```{r}
 df %>% 
   filter(subj_num != 3) %>% 
-  print(n=6)
+  print(n=4)
 ```
 \normalsize
+
+We can compare two variables with `==`, `!=`, `>`, `<`, `>=`, and `<=`.
 
 ## Renaming variables with `rename()`
 
@@ -223,35 +301,6 @@ df %>%
   ) %>% 
   print(n=6)
 ```
-\normalsize
-
-## Modifying categorical variables
-
-The three commands below make the same changes.
-
-\scriptsize
-
-```r
-df_long %>% 
-  mutate(trial_type = ifelse(trial_type=="congruent", "Congrent", "Incongruent"))
-
-df_long %>% 
-  mutate(
-    trial_type = fct_recode(
-      trial_type, 
-      "Congruent"="congruent", 
-      "Incongruent"="incongruent")
-    )
-
-df_long %>% 
-  mutate(
-    trial_type = case_when(
-      trial_type=="congruent" ~ "Congruent",
-      trial_type=="incongruent" ~ "Incongruent"
-    )
-  )
-```
-
 \normalsize
 
 ## Basic plotting
@@ -345,46 +394,113 @@ ggplot(aes(x = congruent, y = incongruent)) +
 :::
 ::::::::::::::
 
+# Hands-on exercise: Data in the wild
 
-## Exercise: data in the wild 
+"How information about what is 'healthy' versus 'unhealthy' impacts children’s consumption of otherwise identical foods" (DeJesus et al., 2019).
 
-"How information about what is 'healthy' versus 'unhealthy' impacts children’s consumption of otherwise identical foods" (DeJesus citation).
+### In Experiment 1 of this study:
 
-```r
+- Researchers presented children (aged XX to XX) with two food options
+- They told the children that one of the foods was healthy and the other was unhealthy
+- Then they left children alone with the food and allowed them to eat if they wanted
+- A research assistant observed through a camera and recorded the number of bites the children took
+- After they were done, they weighed the remaining food in the dish to calculate how many grams of food the children ate
+
+## Hands-on: Loading the data
+
+### Load data from this paper yourself
+
+The data is stored in the file `dejesus-example.csv`.
+
+```{r, include=F}
 library(tidyverse)
-df <- read_csv("dejesus-example.csv")
+dejesus<-read_csv("dejesus-example.csv")
 ```
 
-### Variables
+
+### Data processing goals
+
+Let's create a new tibble called `dejesus_cleaned` where we
+
+* Include only the second trials for each child from Experiment 1
+* Rename variables to be a bit clearer
+* Remove some unnecessary variables
+
+## Hands-on: Cleaning things up
+
+### Variables we'd like
 
 * `child_id`: participant number for each child
 * `condition`: whether the child was told the food was healthy
 * `bites`: how many bites the child took
 * `grams`: how much of the food they ate (g)
 
-## Inspecting the data
+### Instructions
 
-Use the tools you just learned to start inspecting the data. As you do, ask yourself some questions:
+1. Look at the data with `head()`, `glimpse()` or `View()`
+2. Filter for the 2nd trial from Exp. 1 using `filter()` (Exp. 1 is called "1_healthy_unh")
+3. Rename variables to be a bit clearer using `rename()`
+4. Remove unnecessary variables with `select()`
+  
+I didn't show you `select()`, take a look at the help with `?select` to learn about it.
+
+```{r, include=F}
+dejesus_cleaned <- dejesus %>% 
+  filter(study=="1_healthy_unh", trial==2) %>% 
+  rename(child_id = pnum, condition = food_gen) %>% 
+  select(child_id, condition, bites, grams)
+```
+
+::: notes
+* why bother renaming things? did you know what food_gen meant? presumably the authors do, but it could be hard to remember
+:::
+
+## Hands-on: Inspecting the data
+
+Now use the tools you've just learned to do some data sleuthing.
 
 :::::::::::::: {.columns}
 ::: {.column}
 ### Ask yourself
 - Are we missing data for any observations?
 - Do all the observed values make sense?
-- Can we clean up these data? (safely?)
+- Can we fix or clean up these data? (how?)
 :::
 ::: {.column}
 ### Remember
-- `head()`
-- `View()`
+- `head()` and `View()`
 - `is.na()` and `any()`
+- `filter()`
+- plotting with `geom_point()`
 :::
 ::::::::::::::
 
-
-
 ::: notes
-First we'll look then I'll show you how to answer of these Qs with R code.
+
+scale is supposed to have .1g accuracy, which means 1sd to measurements. .1 to .2 is within 1-2sd. if we think a .5g bite is possible, then .3g observation could be 2sd off a .5g bite, rather than 3sd off a 0g bite. But it's hard to know without knowing the accuracy of the "bite" observers. 
+
+We could treat this as a statistical inference problem, but lets save ourselves for more intresting issues. We can probably safely recode the .1 and .2 on zero bites as zeros. It's not as clear what to do with the .3 on 1 bite.
+
+:::
+
+```{r, include=F}
+any(is.na(dejesus_cleaned))
+
+head(dejesus_cleaned)
+
+# can't be any grams gone if zero bites
+dejesus_cleaned %>% 
+  filter(bites==0, grams > 0) %>% 
+  count(grams)
+
+# can we trust the bites coding? let's look at what 1 bite looks like
+
+# was 42, healthier miscoded? maybe, tho probably not
+dejesus_cleaned %>% 
+  filter(bites==1, grams < 1) %>% 
+  count(grams)
+```
+::: notes
 
 Want them to:
 
@@ -395,3 +511,87 @@ Want them to:
 * finally, make a plot
 * maybe, do a test
 :::
+
+## Hands-on: Inspecting with plotting
+
+Plotting can help us look for outliers or possible data-entry errors.
+
+```{r inspect-plot, echo=T, fig.align='center', out.height="50%"}
+dejesus_cleaned %>% 
+  ggplot(aes(x=bites, y = grams)) +
+  geom_point()
+```
+
+## Hands-on: Fixing the dataset
+
+* A number of trials where children took zero bites show non-zero amounts of food being eaten according to grams
+* These are most likely measurement errors, due to the inaccuracies of scales for small weights.
+* If we like, we can fix these measurement errors using the `if_else()` function. The function takes 3 arguments, like so:
+
+`if_else(condition, value_if_true, value_if_false)`
+
+```{r, echo=T}
+dejesus_cleaned <- dejesus_cleaned %>% 
+  mutate(
+    grams = if_else(bites==0, 0, grams)
+    )
+```
+
+
+```{r, include=F}
+## are there any other suspicious values? we could look at a scatterplot
+dejesus_cleaned %>% 
+  ggplot(aes(x=bites, y = grams)) +
+  geom_jitter(width=.1)
+
+## we can spot a weird point for bites = 3, let's see what it really is 
+## now what to make of 3 bites for .9g? and 2 bites for 
+dejesus_cleaned %>% 
+  filter(bites==3 | bites==2) %>% 
+  arrange(grams)
+
+## Maybe we should drop those two funky values as unreliable
+dejesus_cleaned <- dejesus_cleaned %>% 
+  mutate(
+    grams = ifelse(bites==0, 0, grams),
+    grams = ifelse(bites > 1 & grams < 1, NA, grams),
+    bites = ifelse(bites > 1 & grams < 1, NA, bites),
+    )
+
+dejesus_cleaned %>% 
+  ggplot(aes(x=condition, y = grams, fill=condition)) +
+  geom_violin(width=.5) +
+  geom_jitter(width=.1) +
+  theme(legend.position = "none")
+```
+
+# Extra slides
+
+## Modifying categorical variables
+
+The three commands below make the same changes.
+
+\scriptsize
+
+```r
+df_long %>% 
+  mutate(trial_type = ifelse(trial_type=="congruent", "Congrent", "Incongruent"))
+
+df_long %>% 
+  mutate(
+    trial_type = fct_recode(
+      trial_type, 
+      "Congruent"="congruent", 
+      "Incongruent"="incongruent")
+    )
+
+df_long %>% 
+  mutate(
+    trial_type = case_when(
+      trial_type=="congruent" ~ "Congruent",
+      trial_type=="incongruent" ~ "Incongruent"
+    )
+  )
+```
+
+\normalsize
