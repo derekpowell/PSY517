@@ -1,0 +1,269 @@
+---
+title: "Introduction to R"
+output: html_notebook
+---
+
+# loading packages
+
+```{r}
+# loading packages with library() <-- also note # for comments
+library(tidyverse) # ggplot2, readr, dplyr, etc.
+```
+
+# loading data
+
+```{r}
+# loading data
+df <- read_csv("stroop-2014.csv")
+```
+
+# inspect data + indexing dataframes / grabbing values
+
+```{r}
+head(df)
+```
+
+e.g. check column types, find missing values, find the largest value, smallest value, etc
+
+```{r}
+any(is.na(df))
+```
+
+```{r}
+mean(df$congruent)
+min(df$congruent)
+max(df$congruent)
+```
+
+```{r}
+mean(df$incongruent)
+min(df$incongruent)
+max(df$incongruent)
+```
+
+# define some new functions
+
+* `se()`
+* `standardize()`
+
+```{r}
+se <- function(x){sd(x)/sqrt(length(x))}
+
+standardize <- function(x){
+  (x - mean(x, ...))/sd(x, ...)
+}
+```
+
+```{r}
+se <- function(x){sd(x)/sqrt(length(x))}
+
+
+sd(df$congruent)
+
+se(df$congruent)
+```
+
+# Data munging and visualization
+
+The "pipe" operator ` %>% ` is handy.
+
+```{r}
+# to long format
+df_long <- df %>% 
+  gather(trial_type, rt, congruent, incongruent)
+
+# see what happened
+df_long %>% 
+  arrange(subj_num) %>% 
+  head()
+```
+
+```{r}
+# making a boxplot
+df_long %>% 
+  ggplot(aes(x=trial_type, y=rt)) +
+  geom_boxplot()
+```
+
+```{r}
+# summarizing
+df_long %>% 
+  group_by(trial_type) %>% 
+  summarize(mean_rt = mean(rt), se_rt = se(rt))
+```
+
+```{r}
+# plotting means and standard errors
+df_long %>% 
+  group_by(trial_type) %>% 
+  summarize(mean_rt = mean(rt), se_rt = se(rt)) %>% 
+  mutate(ul = mean_rt + se_rt, ll = mean_rt- se_rt) %>% 
+  ggplot(aes(x=trial_type, y = mean_rt, ymin=ll, ymax=ul)) +
+  geom_pointrange()
+```
+
+# do a statistical test
+
+```{r}
+t.test(df$congruent, df$incongruent, paired=TRUE)
+```
+
+`t.test()` returns a "named list." This can be indexed by its names with `$` or with double brackets `[[ ]]`.
+
+```{r}
+result <- t.test(df$congruent, df$incongruent, paired=TRUE)
+
+result$p.value
+result[["statistic"]]
+```
+
+
+# Modify and transform data
+
+```{r}
+# filter out a "bad" subject
+
+df %>% 
+  filter(subj_num != 3)
+```
+
+```{r}
+# translate seconds to ms -- but note we don't have accuracy, so seconds is probably better
+df %>% 
+  mutate(
+    congruent_ms = congruent*1000,
+    incongruent_ms = incongruent*1000
+  )
+```
+
+```{r}
+# renaming: capitalize condition names
+df %>% 
+  rename(Incongruent = incongruent, Congruent = congruent)
+
+```
+
+```{r}
+# editing variables, 3 different ways
+
+df_long %>% 
+  mutate(trial_type = ifelse(trial_type=="congruent", "Congrent", "Incongruent"))
+
+df_long %>% 
+  mutate(
+    trial_type = fct_recode(
+      trial_type, 
+      "Congruent"="congruent", 
+      "Incongruent"="incongruent")
+    )
+
+df_long %>% 
+  mutate(
+    trial_type = case_when(
+      trial_type=="congruent" ~ "Congruent",
+      trial_type=="incongruent" ~ "Incongruent"
+    )
+  )
+```
+
+```{r}
+# creating a new categorical variable
+
+df %>% 
+  mutate(avg = (congruent + incongruent)/2 ) %>% 
+  mutate(
+    speed_group = case_when(
+      percent_rank(-avg) > .67 ~ "fast",
+      percent_rank(-avg) > .33 ~ "medium",
+      TRUE ~ "slow"
+    )
+  ) %>% 
+  gather(trial_type, rt, contains("congruent")) %>% 
+  ggplot(aes(x=speed_group, y = rt, fill=trial_type)) +
+  geom_boxplot()
+```
+
+## histograms
+
+```{r}
+df_long %>% 
+  ggplot(aes(x=rt, fill=trial_type)) +
+  geom_histogram(alpha=.7, position="identity")
+```
+
+## Publication quality figures
+
+```{r}
+# make a pretty pointrange plot / also make a bar plot
+```
+
+
+```{r}
+corr_val <- round(cor(df$congruent, df$incongruent), 3)
+
+df %>% 
+ggplot(aes(x = congruent, y = incongruent)) + 
+  geom_smooth(method="lm", alpha=.2) +
+  geom_point() +
+  annotate("text", x = 20, y = 13, label=paste("r =", corr_val), size = 4) +
+  theme_bw(base_size=12) +
+  theme(
+    aspect.ratio=1,
+    panel.grid = element_blank()
+    ) +
+  labs(
+    x = "Congruent RT (s)", 
+    y = "Incongruent RT (s)", 
+    title = "Scatterplot of Stroop task response times"
+    )
+```
+
+# A larger example
+
+this data has 21k rows and factors have many levels. But notice how our code doesn't really change!
+
+```{r}
+# I should get some of my own GSS data with more interesting variables
+data(gss_cat)
+
+glimpse(gss_cat)
+```
+
+```{r}
+se <- function(x,...){sd(x,...)/sqrt(length(x))}
+
+gss_cat %>% 
+  group_by(marital) %>% 
+  summarize(M = mean(tvhours, na.rm=TRUE), SE = se(tvhours, na.rm=TRUE)) %>% 
+  ggplot(aes(x=marital, y = M, ymin = M - SE, ymax=M+SE)) +
+  facet_wrap(~marital) +
+  geom_pointrange()
+```
+```{r}
+gss_cat %>% 
+  ggplot(aes(x=age, y = tvhours)) +
+  # facet_wrap(~marital) +
+  geom_smooth() +
+  geom_jitter(alpha=.1)
+```
+[do a `lm()` on something of some interest]
+
+
+# A real example (DeJesus children eating food example)
+
+```{r}
+# load dejesus data
+```
+
+Make this an in-class exercise
+
+Illustrates need to inspect data, mutate based on another variable. Check for impossible values and fix them. Then deal with NAs.
+
+Want them to:
+* clean up variable naming
+* deal with NAs
+* notice impossible values
+* fix them carefully (check if what we do is safe)
+* finally, make a plot
+* maybe, do a test
+

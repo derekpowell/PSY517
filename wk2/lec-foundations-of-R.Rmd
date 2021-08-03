@@ -43,7 +43,7 @@ theme_set(theme_gray(base_size=28))
 ## Kicking ass
 
 ```{r kick-ass, fig.align='center', out.height="80%", fig.cap = "The Kick-Ass curve"}
-knitr::include_graphics("images/kick-ass-curve.jpg")
+knitr::include_graphics("../images/kick-ass-curve.jpg")
 ```
 
 ## Rstudio tour
@@ -81,13 +81,13 @@ library(tidyverse)
 
 Let's load some data.
 
-```{r load-stroop, echo=T}
+```{r load-stroop, echo=T, message=F}
 df <- read_csv("stroop-2014.csv")
 ```
 
 ## Inspecting data with `head()`
 
-We can inspect our data with the `head()` function (the `glimpse()` function is also useful).
+We can inspect our data with the `head()` function.
 
 ```{r df-head, echo=T}
 head(df)
@@ -97,18 +97,20 @@ head(df)
 
 First let's check if we are missing any values. 
 
-1. We will pass our `df` object to the `is.na()` function, which will give us a matrix of `TRUE/FALSE` values indicating whether the value was missing or not. 
-2. Then we'll pass the output of `is.na()` into the `any()` function, which tells us if any of the values we give it are `TRUE`.
 
 ```{r check-na, echo=T}
 any(is.na(df))
 ```
 
+
 It looks like we aren't missing any data.
+
+1. I passed our `df` object to the `is.na()` function, which will gave  a matrix of `TRUE/FALSE` values indicating whether the value was missing or not. 
+2. Then I passed the output of `is.na()` into the `any()` function, which tells us if any of the values we give it are `TRUE`.
 
 ## Indexing from dataframes
 
-Our `df` object is a dataframe (more specifically, a `tibble`) that consists of multiple variables. We can "index" or extract those variables using the `$` operator. Let's pull out the congruent trial data.
+Our `df` object is a dataframe that consists of multiple variables. We can "index" or extract those variables using the `$` operator. Let's pull out the congruent trial data.
 
 ```{r indexing-vars, echo=T}
 df$congruent
@@ -195,8 +197,106 @@ How would you create a function to standardize a variable based on the equation?
 
 $$Z = \frac{x-\mu}{\sigma}$$
 
+# Working with data
 
-## Data tidying
+## Removing cases with `filter()`
+
+Suppose participant #3 called us up with a confession: they were really distracted the day of the experiment and could hardly pay any attention. Let's remove them from our dataset.
+
+We will use the "pipe" operator ` %>% ` to pipe our data (`df`) to the `filter()` function. We can compare two variables with `==`, `!=`, `>`, `<`, `>=`, and `<=`.
+
+\small
+```r
+df %>% 
+  filter(subj_num != 3)
+```
+
+```{r}
+df %>% 
+  filter(subj_num != 3) %>% 
+  print(n=4)
+```
+\normalsize
+
+## Creating new variables with `mutate()`
+
+Things might feel more scientific if we store our response time measures as milliseconds (such precision!). We can compute new variables with the `mutate()` function.
+
+\scriptsize
+```r
+df %>% 
+  mutate(
+    congruent_ms = congruent*1000,
+    incongruent_ms = incongruent*1000
+  )
+```
+
+```{r, echo=F}
+df %>% 
+  mutate(
+    congruent_ms = congruent*1000,
+    incongruent_ms = incongruent*1000
+  ) %>% 
+  print(n=6)
+```
+\normalsize
+
+## Renaming variables with `rename()`
+
+Maybe we'd like to capitalize our condition name variables.
+
+\small
+```r
+df %>% 
+  rename(Incongruent = incongruent, Congruent = congruent)
+```
+
+```{r}
+df %>% 
+  rename(Incongruent = incongruent, Congruent = congruent) %>% 
+  print(n=6)
+```
+\normalsize
+
+## Stringing together actions with `%>%`
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+
+- The `%>%` operator pipes the output of one function into the next function as its first argument.
+- For example, 
+  ```r
+  any(is.na(df))
+  ```
+  is the same as 
+  ```r
+  df %>% is.na() %>% any()
+  ```
+- This lets us string commands together, as shown here
+
+
+:::
+::: {.column}
+
+\scriptsize
+```r
+df %>% 
+  filter(subj_num != 3) %>% 
+  mutate(
+    congruent_ms = congruent*1000,
+    incongruent_ms = incongruent*1000
+  ) %>% 
+  rename(
+    Incongruent = incongruent, 
+    Congruent = congruent
+    ) 
+```
+\normalsize
+:::
+::::::::::::::
+
+
+## Tidying data
 
 :::::::::::::: {.columns align=center}
 ::: {.column}
@@ -226,11 +326,9 @@ $$Z = \frac{x-\mu}{\sigma}$$
 :::
 ::::::::::::::
 
-
-
 ## From wide to long with `gather()`
 
-Let's convert our data from wide to long format using the `gather()` function and the "pipe" operator ` %>% `.
+Let's convert our data from wide to long format using the `gather()` function.
 
 ```{r wide-to-long, echo=T}
 df_long <- df %>% 
@@ -244,80 +342,67 @@ df_long %>%
   print(n=6)
 ```
 
-## Removing cases with `filter()`
+## From long to wide with `spread()`
 
-Suppose participant #3 called us up with a confession: they were really distracted the day of the experiment and could hardly pay any attention. Now that we know that, maybe it's best to remove them from our dataset.
+Sometimes wide data is what we want. We can convert long data to wide data with the `spread()` function.
 
-\small
-```r
-df %>% 
-  filter(subj_num != 3)
+```{r long-to-wide, echo=T}
+df_wide <- df_long %>% 
+  spread(trial_type, rt)
 ```
 
 ```{r}
-df %>% 
-  filter(subj_num != 3) %>% 
-  print(n=4)
-```
-\normalsize
-
-We can compare two variables with `==`, `!=`, `>`, `<`, `>=`, and `<=`.
-
-## Renaming variables with `rename()`
-
-Maybe we'd like to capitalize our condition name variables.
-
-\small
-```r
-df %>% 
-  rename(Incongruent = incongruent, Congruent = congruent)
-```
-
-```{r}
-df %>% 
-  rename(Incongruent = incongruent, Congruent = congruent) %>% 
+# see what happened
+df_wide %>% 
+  arrange(subj_num) %>% 
   print(n=6)
 ```
-\normalsize
+## Pivot functions
 
-## Creating new variables with `mutate()`
+A recent update to the `tidyverse` is the introduction of the `pivot_longer()` and `pivot_wider()` functions.
 
-Things might feel more scientific if we store our response time measures as milliseconds (such precision!). We can compute new variables with the `mutate()` function.
+- `pivot_longer()` = fancier but more complicated `gather()`
+- `pivot_wider()` = fancier but more complicated `spread()`
 
-\scriptsize
-```r
-df %>% 
-  mutate(
-    congruent_ms = congruent*1000,
-    incongruent_ms = incongruent*1000
-  )
-```
-
-```{r, echo=F}
-df %>% 
-  mutate(
-    congruent_ms = congruent*1000,
-    incongruent_ms = incongruent*1000
-  ) %>% 
-  print(n=6)
-```
-\normalsize
-
-## Basic plotting
-
-```{r boxplot-example, echo=T, out.height="50%", fig.align='center'}
-df_long %>% 
-  ggplot(aes(x=trial_type, y=rt)) +
-  geom_boxplot()
-```
+I don't expect we will benefit from the extra complexity of `pivot_wider()` and `pivot_longer()` for most of what we do in this class.
 
 ## Summarizing data
+
+* `group_by()` breaks the data into groups
+* `summarize()` can be used with functions that take a vector input (from each group) and output a single number
 
 ```{r summ-example, echo=T}
 df_long %>% 
   group_by(trial_type) %>% 
   summarize(mean_rt = mean(rt), se_rt = se(rt))
 ```
+
+# Plotting data
+
+## Basic plotting
+
+:::::::::::::: {.columns align=center}
+::: {.column width="40%"}
+
+### Key `ggplot()` functions
+- `ggplot()`: create a plot object
+- `aes()`: specify the mapping of variables to plot elements
+- `geom_boxplot()` (and other `geom_`s): draw something on the plot
+- Note that ggplot elements are added to one another with `+`
+
+:::
+::: {.column width="60%"}
+
+\small
+```{r boxplot-example, echo=T, out.width="80%", fig.align='center'}
+df_long %>% 
+  ggplot(aes(x=trial_type, y=rt)) +
+  geom_boxplot()
+```
+\normalsize
+
+:::
+::::::::::::::
 
 ## Plotting summarized data
 
@@ -330,14 +415,77 @@ df_long %>%
   geom_pointrange()
 ```
 
-## Performing a t-test
+## Creating publication-quality figures (1)
 
-\small
-```{r ttest, echo=T}
-t.test(df$congruent, df$incongruent, paired=TRUE)
+:::::::::::::: {.columns align=center}
+::: {.column width="60%"}
+\scriptsize
+```r
+df_long %>%
+  group_by(trial_type) %>%
+  summarize(
+    mean_rt = mean(rt),
+    se_rt = se(rt)
+  ) %>%
+  mutate(
+    ul = mean_rt + 1.96 * se_rt,
+    ll = mean_rt - 1.96 * se_rt
+  ) %>%
+  ggplot(
+    aes(
+      x = trial_type, y = mean_rt,
+      ymin = ll, ymax = ul
+    )
+  ) +
+  geom_bar(
+    stat = "identity", width = .5, fill = "grey"
+    ) +
+  geom_errorbar(width = .1) +
+  theme_bw(base_size = 28) +
+  theme(panel.grid = element_blank()) +
+  labs(
+    x = "Trial Type",
+    y = "Response time (s)"
+  )
 ```
+\normalsize
+:::
 
-## Creating publication-quality figures
+::: {.column width="40%"}
+
+```{r barplot, message=F, fig.align='center', out.width="100%", fig.cap="Mean response times by trial type with 95\\% confidence intervals"}
+df_long %>%
+  group_by(trial_type) %>%
+  summarize(
+    mean_rt = mean(rt),
+    se_rt = se(rt)
+  ) %>%
+  mutate(
+    ul = mean_rt + 1.96 * se_rt,
+    ll = mean_rt - 1.96 * se_rt
+  ) %>%
+  ggplot(
+    aes(
+      x = trial_type, y = mean_rt,
+      ymin = ll, ymax = ul
+    )
+  ) +
+  geom_bar(
+    stat = "identity", width = .5, fill = "grey"
+    ) +
+  geom_errorbar(width = .1) +
+  theme_bw(base_size = 32) +
+  theme(panel.grid = element_blank()) +
+  labs(
+    x = "Trial Type",
+    y = "Response time (s)"
+  )
+```
+:::
+::::::::::::::
+
+
+## Creating publication-quality figures (2)
 
 :::::::::::::: {.columns align=center}
 ::: {.column width="60%"}
@@ -394,6 +542,13 @@ ggplot(aes(x = congruent, y = incongruent)) +
 :::
 ::::::::::::::
 
+# Performing a t-test
+
+\small
+```{r ttest, echo=T}
+t.test(df$congruent, df$incongruent, paired=TRUE)
+```
+
 # Hands-on exercise: Data in the wild
 
 "How information about what is 'healthy' versus 'unhealthy' impacts children’s consumption of otherwise identical foods" (DeJesus et al., 2019).
@@ -404,7 +559,7 @@ ggplot(aes(x = congruent, y = incongruent)) +
 - They told the children that one of the foods was healthy and the other was unhealthy
 - Then they left children alone with the food and allowed them to eat if they wanted
 - A research assistant observed through a camera and recorded the number of bites the children took
-- After they were done, they weighed the remaining food in the dish to calculate how many grams of food the children ate
+- After each child finished, reseachers weighed the remaining food in the dish to calculate how many grams of food the children ate
 
 ## Hands-on: Loading the data
 

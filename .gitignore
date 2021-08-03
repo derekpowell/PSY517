@@ -40,6 +40,14 @@ vignettes/*.pdf
 
 # outputs
 *.html
+*.pdf
+
+# custom stuff
+/local/*
 
 # mac stuff
 .DS_Store
+
+# latex stuff
+*.log
+*.tex

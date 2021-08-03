@@ -33,7 +33,7 @@ Click on the project "PROJECT NAME" to see an example.
 Now you will be looking at an rstudio interface inside your browser, like this:
 
 ```{r fig-rstudio-example, echo=F, fig.align='center', out.width='75%'}
-knitr::include_graphics("images/rstudio-interface-init.png")
+knitr::include_graphics("../images/rstudio-interface-init.png")
 ```
 
 ### Console
@@ -54,19 +54,36 @@ This pane has a number of tabs that allow it to serve different functions.
 
 #### Files
 
-The first and primary tab is the "files" tab, which let's you see the folder and file structure available in your project. The files you see here are located on the rstudio "cloud" (server), not on your local machine. This should be clear from the directory structure shown in the files pane: ![cloud folder path](images/rstudio-cloud-file-inline.png){width=120px}.
+The first and primary tab is the "files" tab, which let's you see the folder and file structure available in your project. The files you see here are located on the rstudio "cloud" (server), not on your local machine. This should be clear from the directory structure shown in the files pane: ![cloud folder path](../images/rstudio-cloud-file-inline.png){width=120px}.
 
 One thing worth keeping in mind is that the rstudio cloud servers are run on Linux, so files and file paths will use Linux formatting, which is similar to Mac OS. Folders and subfolders are accessed with forward-/, rather than backslash-\\ as on Windows. Because your files will be stored in each project, you can typically use "relative paths," which start from the folder in which your scripts are located. So if you want to load a data file in a script, when both the script and data file are located in your project folder, you can simply use:
 
-```
+```r
 df <- read_csv("filename.csv")
 ```
 
 Or, if the file is in a subfolder called `my-folder`, you can load it with:
 
-```
+```r
 df <- read_csv("my-folder/filename.csv")
 ```
+
+Relative paths also allow you to refer to a folder one up in the hierarchy with `../`. Say we have the following directory structure:
+
+```
+project_folder
+│__ README.md
+|
+└───scripts_folder
+|   │__ script1.R
+|   │__ script2.R
+|   
+└───data_folder
+    │__ data1.csv
+    │__ data2.tsv
+```
+
+We can load `data1.csv` from within `script1.R` with `read_csv("../data_folder/data1.csv")`.
 
 #### Plots
 
@@ -96,37 +113,40 @@ library(tidyverse)
 
 We'll load some data collected by Daniel Lakens in his introductory psychology course. He had students perform the classic "Stroop" task, requiring them to name the ink color in which either congruent or incongruent color words were printed (e.g. The word "Green" printed in green versus yellow ink). The classic finding is that reading interferes with color naming, so it takes longer to name the ink color when the word it is printing is "incongruent" (naming a different color) than if it is "congruent" (naming the same color).
 
-Lakens has stored this data in a space-delimited file, which is not very standard. To read it, we need to use the `read_delim()` function and specify the delimiter as the space character. Typically in this class we will be using what are known as "comma-separated" files, or `.csv`. To read these, we will use the `read_csv()` function. Note that we can read this file in from a web URL, which can be very handy.
+I've stored the data from Laken's 2014 in-class experiment in a `.csv` file. To read in this file, we will use the `read_csv()` function.
 
-```{r}
-stroop <- read_delim("https://raw.github.com/Lakens/Stroop/master/stroop.csv", delim=" ")
+```r
+stroop <- read_csv("stroop-2014.csv")
+```
+
+```{r load-stroop, include=F}
+stroop <- read_csv("../data/stroop-2014.csv")
 ```
 
 We can take a peek at this data using the `head()` function, which will show us the first 6 rows of the dataset.
 
 ```{r, echo=T}
-head(stroop)
+head(df)
 ```
-There are four variables:
+There are three variables:
 
-* PPNR: the participant number
-* Congruent: the total time taken to name ink colors on congruent trials
-* Incongruent: the total time taken to name ink colors on incongruent trials
-* Year: the year of participation (this has data from two classes)
+* subj_num: the participant number
+* congruent: the total time taken to name ink colors on congruent trials
+* incongruent: the total time taken to name ink colors on incongruent trials
 
 ## Data Munging
 
 This data is in a "wide" format, where each row indicates a participants' times for both congruent and incongruent trials, saved as two separate variables. Often it is useful to rearrange data from "wide" to "long" format, which we can do using the `gather()` or `pivot_wider()` commands. Here's how we'd do that in this case:
 
-```{r}
+```{r stroop-gather}
 stroop %>% 
-  gather(trial_type, RT, Congruent, Incongruent) %>% 
-  arrange(PPNR) %>% 
+  gather(trial_type, RT, congruent, incongruent) %>% 
+  arrange(subj_num) %>% 
   head()
 ```
 Now there are two rows per subject, one with their congruent trial times and one with their incongruent times. Rearranging things like this is often useful.
 
-I am also using the `%>%` operator (pipe) to string together these commands. This let's you "pipe" the results of one command in as the first argument of new command. That is, `stroop %>% head()` is equivalent to `head(stroop)`. To help you see what `gather()` has done, I've also sorted the rows by participant ID using `arrange(PPNR)` and again printed out the first 6 rows with `head()`.
+I am also using the `%>%` operator (pipe) to string together these commands. This let's you "pipe" the results of one command in as the first argument of new command. That is, `stroop %>% head()` is equivalent to `head(stroop)`. To help you see what `gather()` has done, I've also sorted the rows by participant ID using `arrange(subj_num)` and again printed out the first 6 rows with `head()`.
 
 You will get lots more explanation and practice with these tools as you work through the exercises in [_R for Data Science_](https://r4ds.had.co.nz/).
 
@@ -135,10 +155,10 @@ You will get lots more explanation and practice with these tools as you work thr
 Before we do any statistics on this data, let's make a plot to visualize what the data look like. We can combine our data munging with the `ggplot2` package plotting tools to better understand our data. Below I use a "boxplot" to get a sense of the distribution of the response time values for the two trial types.
 
 ```{r, echo=T}
-mini_stroop %>% 
-  gather(trial_type, RT, Congruent, Incongruent) %>% 
-  ggplot(aes(x=trial_type, y=RT)) +
-  geom_boxplot(width=.5)
+stroop %>%
+  gather(trial_type, rt, congruent, incongruent) %>%
+  ggplot(aes(x = trial_type, y = rt)) +
+  geom_boxplot(width = .5)
 ```
 Looking at the plot, it should be very clear that participants have longer response times on the incongruent trials than on the congruent ones. This is an effect you can see with the naked-eye, so to speak. Once you get used to looking at data visualizations like this, you will start being satisfied just with the plots, and sometimes have no need for statistics at all!
 
@@ -149,7 +169,7 @@ Okay, okay, fine let's do a statistical test anyhow. Below is the code to conduc
 Passing that all to `t.test()` prints out our results.
 
 ```{r, echo=T}
-t.test(stroop$Congruent, stroop$Incongruent, paired=TRUE)
+t.test(stroop$congruent, stroop$incongruent, paired=TRUE)
 ```
 
 The result is significant. Stars! Stars for everyone!
