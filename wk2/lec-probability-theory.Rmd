@@ -112,11 +112,11 @@ samples <- sample(p_grid, prob = posterior, size=1e4, replace=T)
 
 \normalsize
 
-```{r plot-grid-samples, fig.align='center', out.height="50%"}
+```{r plot-grid-samples, fig.align='center', fig.dim=c(4,2)}
 ggplot() +
   geom_histogram(mapping=aes(samples), binwidth=.01, fill="skyblue") +
   geom_line(mapping=aes(x = p_grid, y = posterior*1e4*1000/100), color="red") +
-  theme_bw(base_size=40) 
+  theme_bw() 
 ```
 
 We estimate the ___probability density___ with the ___count___ of samples at each point on the grid.
@@ -139,11 +139,11 @@ What is the probability that more than half the globe is water?
 mean(samples > .50)
 ```
 
-```{r plot-bounded-interval, fig.align='center', out.height="50%"}
+```{r plot-bounded-interval, fig.align='center', fig.dim=c(3,2)}
 ggplot() +
   geom_histogram(mapping=aes(x=samples, fill=samples>=.50), binwidth=.0101) +
   scale_fill_manual(values = c("grey", "skyblue")) +
-  theme_bw(base_size=40) +
+  theme_bw() +
   theme(legend.position = "none")
 ```
 
@@ -163,14 +163,15 @@ Below is a 50% credible interval.
 quantile(samples, c(.25, .75))
 ```
 
-```{r plot-cred-interval, fig.align='center', out.height="30%"}
+```{r plot-cred-interval, fig.align='left', fig.dim=c(2,1.4)}
 
 ggplot() +
   geom_histogram(mapping=aes(x=samples, 
                              fill = samples > quantile(samples, .25) & samples < quantile(samples,.75)), binwidth=.0101) +
   scale_fill_manual(values = c("grey", "skyblue")) +
-  theme_bw(base_size=40) +
-  theme(legend.position = "none")
+  theme_bw(base_size=10) +
+  theme(legend.position = "none") +
+  labs(x=expression(pi))
 ```
 
 :::
@@ -185,7 +186,7 @@ Below is a 50% HPDI
 rethinking::HPDI(samples, .50)
 ```
 
-```{r plot-hpdi-interval, fig.align='center', out.height="30%"}
+```{r plot-hpdi-interval, fig.align='right', fig.dim=c(2,1.4)}
 samples_hpdi <- rethinking::HPDI(samples, .50)
 
 ggplot() +
@@ -193,8 +194,9 @@ ggplot() +
                    aes(x=samples, 
                        fill = samples > samples_hpdi[1] & samples < samples_hpdi[2]), binwidth=.0101) +
   scale_fill_manual(values = c("grey", "skyblue")) +
-  theme_bw(base_size=40) +
-  theme(legend.position = "none")
+  theme_bw(base_size=10) +
+  theme(legend.position = "none") +
+  labs(x=expression(pi))
 ```
 
 :::
@@ -239,7 +241,6 @@ Our posterior is a little lopsided, so you can see that the MAP is a bit higher 
 ## The Beta-Binomial model
 
 McElreath's "globe tossing" model is actually an example of the ___beta-binomial___ model, a model for a rate or proportion $\pi$.
-
 
 $$y \stackrel{iid}{\sim} binomial(n,\pi)$$
 $$\pi \sim beta(\alpha, \beta)$$
@@ -322,7 +323,7 @@ milgrams_posterior <- rbeta(1e4, 1 + 26, 15 + 14)
 
 And plot these samples
 
-```{r moral-milg-post-fig, out.height="40%", fig.align='center'}
+```{r moral-milg-post-fig, fig.dim=c(3,2), fig.align='center'}
 # tibble(
 #   p_grid = seq(0, 1, length.out=1e3),
 #   p = dbeta(p_grid, 1+26, 15+14)
@@ -332,7 +333,7 @@ And plot these samples
 
 ggplot() + 
   geom_histogram(aes(milgrams_posterior), binwidth=.01, fill="skyblue") +
-  theme_bw(base_size=40) +
+  theme_bw() +
   labs(x = "posterior probability")
 ```
 
@@ -405,6 +406,7 @@ $$\pi \sim beta(\alpha, \beta)$$
 - We can then compute the posterior as
 
 $$ \pi|y \sim beta(1 + 65, 1 + 0)$$
+
 ## Sampling the model posterior
 
 `rbeta()` is great, but it can do some funky things near the extreme values of zero and one. For that reason, I'm going to create my own `grid_approx_rbeta()` function that draws samples from a grid approximated posterior. 
@@ -522,7 +524,10 @@ quantile(beans5_posterior, c(.025, .975))
 :::
 ::::::::::::::
 
-What can you conclude?
+
+:::notes
+what can you conclude from this?
+:::
 
 ## Comparing posteriors with samples
 
@@ -551,7 +556,7 @@ mean(beans4_posterior > beans5_posterior)
 
 ## Computing new quantities with samples
 
-What do we think the difference in Jevon's success rates are when there are four beans compared with when there are five? i.e. what is $\pi_4 - \pi_5$?
+What is the difference in Jevon's success rates are when there are four beans compared with when there are five? i.e. what is the distribution of $\pi|y_4 - \pi|y_5$?
 
 ```{r, echo=T}
 success_diff <- beans4_posterior - beans5_posterior
@@ -570,3 +575,5 @@ How would you do this without samples?
 - ___You wouldn't!___
   - There is no nice, closed-form solution to this problem!
   - Although the result here is nice and could be approximated
+  
+  
