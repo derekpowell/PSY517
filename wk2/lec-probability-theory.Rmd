@@ -24,6 +24,8 @@ library(tidyverse)
 set.seed(1623464)
 ```
 
+<!-- This lecture borrows heavily from Statistical Rethinking Ch.3 and Bayes Rules! Ch.3  -->
+
 ## Bayes' rule
 
 ### Bayes' rule equation
@@ -127,7 +129,7 @@ Samples provide a convenient and powerful way of working with the probability di
 
 ### Samples can also summarize
 
-* Compute intervals from boundaries (e.g. > .50)
+* Compute intervals from boundaries (e.g. $x > .50$)
 * Compute intervals of defined mass (e.g. 95% CI)
 * Compute point estimates
 
@@ -286,13 +288,15 @@ That is, he must have had a relatively strong prior over $\pi$, the rate at whic
 
 Let's say our Moral Milgram had a prior for $\pi \sim beta(1, 15)$
 
-```{r moral-milg-prior-fig, out.height="40%", fig.align='center'}
+```{r moral-milg-prior-fig, fig.dim=c(3,2), fig.align='center'}
 tibble(
   p_grid = seq(0,1, length.out=1e3),
   p = dbeta(p_grid, 1, 15)
 ) %>% 
   ggplot(aes(x=p_grid, y=p)) +
-  geom_line()
+  geom_line() +
+  theme_bw() +
+  labs(x=expression(pi), y = "density")
 ```
 
 How confident is our Moral Milgram that fewer than 10% of participants would administer the lethal shock?
@@ -560,14 +564,18 @@ What is the difference in Jevon's success rates are when there are four beans co
 
 ```{r, echo=T}
 success_diff <- beans4_posterior - beans5_posterior
+
+Mode(success_diff)
+
+quantile(success_diff, c(.025, .975))
 ```
 
 ```{r, fig.dim = c(2.5,1.5), fig.align='center'}
-ggplot() +
-  geom_histogram(aes(success_diff), binwidth=.005) +
-  geom_vline(xintercept=0, linetype="dashed") +
-  theme_bw() +
-  labs(x="Difference in success rates")
+# ggplot() +
+#   geom_histogram(aes(success_diff), binwidth=.005) +
+#   geom_vline(xintercept=0, linetype="dashed") +
+#   theme_bw() +
+#   labs(x="Difference in success rates")
 ```
 
 How would you do this without samples? 
@@ -576,4 +584,53 @@ How would you do this without samples?
   - There is no nice, closed-form solution to this problem!
   - Although the result here is nice and could be approximated
   
-  
+
+## Hands-on: What about priors?
+
+In this example I played dumb with an uninformative $beta(1,1)$. In reality, Jevons should have believed that he could be quite accurate in estimating the number of 3, 4, or 5 beans, certainly that his accuracy would be at least 90% or so.
+
+- Propose an informative prior distribution that could roughly capture what Jevons thought before he collected his data
+- Compute a new posterior distribution for four and five beans with this prior (you can use `rbeta()`)
+- Calculate the probability Jevons' accuracy is better with four beans by comparing the posterior distributions 
+- Compared with the results with the uniform prior, what changed? Why?
+
+:::notes
+a good prior would be something like Beta(50,1)
+
+the posterior of 4beans gets shifted more than posterior of 5beans and both distributiosn get more narrow, so we get a bit more confident (tho not that different)
+:::
+
+## Hands-on: Keep tossing?
+
+- Is Jevons really perfect? Where is the line for perfection in a task like this?
+- Let's say we want to be at least 50% confident he is at least 99% accurate. How many successes would we need to observe in a row to achieve this confidence if we begin with a uniform $beta(1,1)$ prior?
+- Suppose Jevons makes one mistake, how many total successes would we need to reach the same confidence?
+
+:::notes
+70 is a good answer with no failures
+167 is a good answer with 1 failure
+:::
+
+## Hands-on: Simulating data
+
+- If Jevons makes one mistake on trial 65, he would need 102 correct in a row to reach 50% confidence he is at least 99% accurate.
+- The code below simulates 1,000,000 bean-tossing trials assuming that Jevons is actually 99.1% accurate using the `rbernoulli()` function. 
+  - Use these simulated samples to calculate the probability that Jevons gets at least 102 in a row
+  - Use `dbinom()` to calculate the probability of Jevons getting 102 out of 102 trials when $\pi = .991$ 
+  - What do you notice?
+
+```{r, echo=T}
+x <- rbernoulli(1e6, .991)
+runs <- rle(x)
+run_lengths <- runs$lengths[runs$values==TRUE]
+```
+
+```{r, include=F}
+mean(run_lengths >= 102)
+dbinom(102, 102, .991)
+```
+
+
+:::notes
+This is just to show you that all is right with the universe when we use probabilities
+:::
