@@ -26,7 +26,7 @@ z
 ## operating on vectors returns vectors
 y + 5 
 
-y == 4 
+y == 4 # vectors can be different types
 
 ## indexing vectors
 
@@ -65,7 +65,7 @@ df <- read_csv("stroop-2014.csv")
 
 df
 
-head(df)
+# head(df)
 
 glimpse(df) # dplyr
 

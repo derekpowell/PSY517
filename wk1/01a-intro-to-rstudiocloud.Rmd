@@ -1,6 +1,8 @@
 ---
 title: "Intro to Rstudio.cloud"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 
@@ -10,13 +12,13 @@ output: html_notebook
 
 ## Creating an account
 
-You should have received an email at your @asu.edu email address with the subject line: "SUBJECT LINE" inviting you to create an account on rstudio cloud for this class. Follow the links in the email and create a password for your account.
+You should have received an email at your @asu.edu email address with the subject line: "SUBJECT LINE" inviting you to create an account on rstudio cloud for this class. Follow the links in the email to create your account. 
 
-If you missed this email, search your inbox and spam folders. If you really didn't get it, reach out to the instructor.
+This link is also available on the Canvas course page. Please do not share this link with anyone!
 
 ## Accessing rstudio cloud
 
-Navigate your browser to https://rstudio.cloud and log in using the credentials you just created.
+Navigate your browser to https://rstudio.cloud and log in using the credentials you created. You should automatically be able to see the "PSY517" workspace dedicated to this course.
 
 ## Organization: Workspaces and projects
 
@@ -105,7 +107,7 @@ An R "package" is a set of functions and tools. There are thousands of packages 
 
 The command below is actually a shortcut for loading a set of important packages that are often used together as part of the "tidy universe" ("tidyverse"). Among these are `tibble`, `dplyr`, `ggplot2`, and more---we'll dig into all of these packages in the next weeks.
 
-```{r load-tidyverse, echo=T}
+```{r load-tidyverse, echo=T, message=F}
 library(tidyverse)
 ```
 

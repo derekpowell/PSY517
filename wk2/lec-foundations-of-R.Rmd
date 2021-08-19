@@ -81,8 +81,12 @@ library(tidyverse)
 
 Let's load some data.
 
-```{r load-stroop, echo=T, message=F}
+```r
 df <- read_csv("stroop-2014.csv")
+```
+
+```{r load-stroop, include=F}
+df <- read_csv("../data/stroop-2014.csv")
 ```
 
 ## Inspecting data with `head()`
@@ -301,7 +305,7 @@ df %>%
 :::::::::::::: {.columns align=center}
 ::: {.column}
 
-"Tidy" data is data stored in "long" rather than "wide" format.
+The same data can be stored in different formats.
 
 - __Wide format__: each row of a data table is a case with many variables. 
 - __Long format__: each row stores the value for one variable of one case.
@@ -569,7 +573,7 @@ The data is stored in the file `dejesus-example.csv`.
 
 ```{r, include=F}
 library(tidyverse)
-dejesus<-read_csv("dejesus-example.csv")
+dejesus <- read_csv("../data/dejesus-example.csv")
 ```
 
 

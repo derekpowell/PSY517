@@ -89,7 +89,7 @@ Everything we just did could be based on the frequencies of events
 - 95 out of 100 tests on vampires will be positive (95%)
 - 1 out of 100 tests on humans will be posiive (1%)
 
-But we can also turn this logic around: any computation we'd like to do with probabilities can be approximated by working with _samples_ from the probabilitiy distribution and counting up what happens.
+But we can also turn this logic around: any computation we'd like to do with probabilities can be approximated by working with _samples_ from a probabilitiy distribution and counting up what happens.
 
 ## Creating a grid-approximate posterior
 
@@ -124,14 +124,21 @@ ggplot() +
 
 We estimate the ___probability density___ with the ___count___ of samples at each point on the grid.
 
+:::notes
+should unpack the `sample()` function more maybe, show it off with a smaller vector
+:::
+
 ## Why use samples?
 
-Samples provide a convenient and powerful way of working with the probability distribution itself. Samples are how we trade in math for programming.
+- Samples provide a convenient and powerful way of working with the probability distribution itself. 
+- __Samples are how we trade in math for programming.__
 
-### Samples can also summarize
+## Using samples to summarize
 
-* Compute intervals from boundaries (e.g. $x > .50$)
-* Compute intervals of defined mass (e.g. 95% CI)
+### Samples can also summarize. We can ...
+
+* Compute the probability of bounded intervals (e.g. $x > .50$)
+* Compute intervals of defined mass (e.g. 95% credible intervals)
 * Compute point estimates
 
 ## Estimating bounded intervals
@@ -156,7 +163,7 @@ ggplot() +
 :::::::::::::: {.columns align=bottom}
 ::: {.column}
 
-### "credible intervals"
+### "Credible Intervals" (CI)
 
 Below is a 50% credible interval.
 
@@ -239,22 +246,26 @@ Our posterior is a little lopsided, so you can see that the MAP is a bit higher 
 
 ## Example 1: The Milgram experiments
 
--overview of experiment
+- Classic but unethical experiments testing obedience to authority
+- Participants were told they were assigned to be the "teacher" in a memory experiment
+- Teachers were to train the learners by administering electric shocks for incorrect answers
+- Shocks started out small but eventually reached a "lethal" voltage
+- Participants did not know the shocks were fake and the "learner" was actually an actor playing a role
 
 ## The Beta-Binomial model
 
 McElreath's "globe tossing" model is actually an example of the ___beta-binomial___ model, a model for a rate or proportion $\pi$.
 
-$$y \stackrel{iid}{\sim} binomial(n,\pi)$$
-$$\pi \sim beta(\alpha, \beta)$$
+$$y \sim Binomial(n,\pi)$$
+$$\pi \sim Beta(\alpha, \beta)$$
 
 :::::::::::::: {.columns}
 ::: {.column}
 
 ### Components of the model
-- $beta$ prior distribution
-- $binomial$ likelihood distribution
-- $beta$ posterior for $\pi$
+- $Beta$ __prior__ for $\pi$
+- $Binomial$ __likelihood__ for $y$
+- $Beta$ __posterior__ $\pi|y$
 
 :::
 ::: {.column}
@@ -262,8 +273,7 @@ $$\pi \sim beta(\alpha, \beta)$$
 ### Computing the posterior
 
 Observing $s$ successes and $m$ failures, the posterior $\pi$ is:
-
-$$\pi|y \sim beta(\alpha + s, \beta + m)$$
+$$\pi|y \sim Beta(\alpha + s, \beta + m)$$
 An elegant example of ___conjugate priors___.
 
 :::
@@ -279,15 +289,15 @@ Imagine Milgram actually began as a fairly ethical man. What must he have though
 It's hard to know what's in another person's heart. We do know that Milgram would go on to conduct his study on hundreds of naive subjects without ever publicly expressing regret at the harm he caused them. However, he did privately acknowledge his precarious moral position
 :::
 
-## Milgram's priors
+## Milgram's prior beliefs
 
 For his experiments to be ethically permissible, Milgram would have had to have believed that very few, if any, participants would obey the instruction to give lethal shocks.
 
 That is, he must have had a relatively strong prior over $\pi$, the rate at which participants would obey.
 
-## Summarizing Milgram's priors
+## Quantifying Milgram's priors
 
-Let's say our Moral Milgram had a prior for $\pi \sim beta(1, 15)$
+Let's say our Moral Milgram had a prior for $\pi \sim Beta(1, 15)$
 
 ```{r moral-milg-prior-fig, fig.dim=c(3,2), fig.align='center'}
 tibble(
@@ -300,6 +310,8 @@ tibble(
   labs(x=expression(pi), y = "density")
 ```
 
+## Hands-On: Investigating Milgram's priors
+
 How confident is our Moral Milgram that fewer than 10% of participants would administer the lethal shock?
 
 \small
@@ -310,13 +322,45 @@ mean(milgrams_prior < .10)
 
 \normalsize
 
+## Prior predictive checks
+
+It can be useful to consider what kind of observations we expect to make given our priors. This can help us understand whether the numbers we are using are reasonable.
+
+```{r, echo=T}
+prior_predictive <- rbinom(1e4, size=40, prob = milgrams_prior)
+```
+
+```{r, echo=F, fig.dim=c(3,1.5), fig.align='center'}
+ggplot()+
+  geom_histogram(aes(x=prior_predictive), binwidth=.5) +
+  theme_bw() +
+  labs(x="Number harmed")
+```
+
+## Hands-On: Prior predictive checks
+
+1. If Milgram enrolls 40 participants in his study, what is the single most probable number of people administering the lethal shock according to Milgram's priors?
+
+```{r, include=F}
+Mode(prior_predictive)
+```
+
+2. Suppose only 15% of people would suffer serious psychological harm from administering the lethal shock and that their propensity to suffer harm is independent from whether or not they administer the shock. Create a new prior for $\pi_{harm}$ and a new posterior predictive for $y_{harm}$. How confident is Milgram that no more than one person would be harmed by his experiment?
+
+```{r, include=F}
+prior_harm <- milgrams_prior*.15
+prior_predictive_harm <- rbinom(1e4, 40, prior_harm)
+
+mean(prior_predictive_harm <= 1)
+```
+
 ## Computing Milgram's posterior
 
 In Milgram's original 1963 study, 26 of 40 volunteers obeyed the order to administer a "lethal" electric shock.
 
-We can update our $beta(1, 15)$ prior by simply adding the observed "successes" and "failures" to the $\alpha$ and $\beta$ parameters of the prior distribution.
+We can update our $Beta(1, 15)$ prior to compute $\pi|y$ by simply adding the observed "successes" and "failures" to the $\alpha$ and $\beta$ parameters of the prior distribution.
 
-$$\pi|y \sim beta(1 + 26, 15 + 14)$$
+$$\pi|y \sim Beta(1 + 26, 15 + 14)$$
 
 ## Sampling from Milgram' posterior
 
@@ -344,14 +388,29 @@ ggplot() +
 
 ## Prior, likelihood, and posterior
 
-### Priors matter! 
+## Priors matter! 
 
-- Milgram's prior biases the estimates, compare against a model with uniform prior
+- Milgram's prior biases the estimates
+- 65% of participants administered the shocks
+- But our MAP estimate for $\pi|y$ is .49---the estimate is __biased__.
 
-### But likelihoods matter more
+## But likelihoods matter more
 
-- But the posterior has moved a ton from the prior
 - With enough data, the likelihood comes to "dominate" the prior
+- After 40 observations the posterior has shifted a great deal despite our strong starting prior
+
+```{r, echo=F, fig.dim = c(4,2), fig.align='center'}
+tibble(
+  prior = milgrams_prior,
+  posterior = milgrams_posterior
+) %>% 
+  gather(distribution, value, prior, posterior) %>% 
+ggplot() + 
+  aes(x=value, fill=distribution) +
+  geom_histogram(binwidth=.01, alpha=.5) +
+  theme_bw() +
+  labs(x = "posterior probability")
+```
 
 ## Hands-on: Milgram pausing to think
 
@@ -374,7 +433,6 @@ A Moral Milgram would stop and think about his experiment as he conducted it.
 ```{r jevons-results-img, out.height="45%", fig.align='center', fig.cap="Jevons (1871) results from his bean-tossing experiment."}
 knitr::include_graphics("../images/jevons-paper-results.png")
 ```
-
 
 :::notes
 He made 1027 trials, so he did this basically until he got bored.
@@ -403,14 +461,14 @@ jevons <- tribble(
 
 - We will use the same beta-binomial model as before:
 
-$$y \stackrel{iid}{\sim} binomial(n,\pi)$$
-$$\pi \sim beta(\alpha, \beta)$$
+$$y \sim Binomial(n,\pi)$$
+$$\pi \sim Beta(\alpha, \beta)$$
 
 - We'll focus on the "small world" where the true number of beans was 4, where Jevons was correct 65 out of 65 times
-- For illustration, we will assume a uniform or uninformative prior $beta(1,1)$
+- For illustration, we will assume a uniform or uninformative prior $Beta(1,1)$
 - We can then compute the posterior as
 
-$$ \pi|y \sim beta(1 + 65, 1 + 0)$$
+$$ \pi|y \sim Beta(1 + 65, 1 + 0)$$
 
 ## Sampling the model posterior
 
@@ -461,6 +519,8 @@ tibble(
 
 :::notes
 McElreath likes to use 89% and other "odd" intervals as examples, to illustrate the arbitrariness of the standard 95% confidence interval. So this is giving the man his due.
+
+strangeness is that 95% Cred Interval does not contain MAP value
 :::
 
 ## The trouble with point-estimates
@@ -531,7 +591,7 @@ quantile(beans5_posterior, c(.025, .975))
 
 
 :::notes
-what can you conclude from this?
+what can you conclude from this? (not much really)
 :::
 
 ## Comparing posteriors with samples
@@ -563,9 +623,10 @@ mean(beans4_posterior > beans5_posterior)
 
 What is the difference in Jevon's success rates are when there are four beans compared with when there are five? i.e. what is the distribution of $\pi|y_4 - \pi|y_5$?
 
+\scriptsize
+
 ```{r, echo=T}
 success_diff <- beans4_posterior - beans5_posterior
-
 Mode(success_diff)
 
 quantile(success_diff, c(.025, .975))
@@ -578,17 +639,16 @@ quantile(success_diff, c(.025, .975))
 #   theme_bw() +
 #   labs(x="Difference in success rates")
 ```
-
+\normalsize
 How would you do this without samples? 
 
 - ___You wouldn't!___
-  - There is no nice, closed-form solution to this problem!
-  - Although the result here is nice and could be approximated
+  - There is no nice and general closed-form solution to this problem!
   
 
 ## Hands-on: What about priors?
 
-In this example I played dumb with an uninformative $beta(1,1)$. In reality, Jevons should have believed that he could be quite accurate in estimating the number of 3, 4, or 5 beans, certainly that his accuracy would be at least 90% or so.
+In this example I played dumb with an uninformative $Beta(1,1)$. In reality, Jevons should have believed that he could be quite accurate in estimating the number of 3, 4, or 5 beans, certainly that his accuracy would be at least 90% or so.
 
 - Propose an informative prior distribution that could roughly capture what Jevons thought before he collected his data
 - Compute a new posterior distribution for four and five beans with this prior (you can use `rbeta()`)
@@ -604,7 +664,7 @@ the posterior of 4beans gets shifted more than posterior of 5beans and both dist
 ## Hands-on: Keep tossing?
 
 - Is Jevons really perfect? Where is the line for perfection in a task like this?
-- Let's say we want to be at least 50% confident he is at least 99% accurate. How many successes would we need to observe in a row to achieve this confidence if we begin with a uniform $beta(1,1)$ prior?
+- Let's say we want to be at least 50% confident he is at least 99% accurate. How many successes would we need to observe in a row to achieve this confidence if we begin with a uniform $Beta(1,1)$ prior?
 - Suppose Jevons makes one mistake, how many total successes would we need to reach the same confidence?
 
 :::notes
@@ -615,16 +675,33 @@ the posterior of 4beans gets shifted more than posterior of 5beans and both dist
 ## Hands-on: Simulating data
 
 - If Jevons makes one mistake on trial 65, he would need 102 correct in a row to reach 50% confidence he is at least 99% accurate.
-- The code below simulates 1,000,000 bean-tossing trials assuming that Jevons is actually 99.1% accurate using the `rbernoulli()` function. 
-  - Use these simulated samples to calculate the probability that Jevons gets at least 102 in a row
-  - Use `dbinom()` to calculate the probability of Jevons getting 102 out of 102 trials when $\pi = .991$ 
-  - What do you notice?
+- The code below simulates 1,000,000 bean-tossing trials assuming that Jevons is actually 99.1% accurate.
 
+\scriptsize
 ```{r, echo=T}
 x <- rbernoulli(1e6, .991)
 runs <- rle(x)
 run_lengths <- runs$lengths[runs$values==TRUE]
 ```
+
+```{r, echo=F, fig.dim = c(3,1.5), fig.align='center'}
+ggplot() +
+  geom_histogram(aes(x=run_lengths), binwidth=5) +
+  labs(x="# correct in a row") +
+  theme_bw()
+```
+
+## Hands-on: Simulating data
+
+```r
+x <- rbernoulli(1e6, .991)
+runs <- rle(x)
+run_lengths <- runs$lengths[runs$values==TRUE]
+```
+
+- Use these simulated samples to calculate the probability that Jevons gets at least 102 in a row
+- Use `dbinom()` to calculate the probability of Jevons getting 102 out of 102 trials when $\pi = .991$ 
+- What do you notice?
 
 ```{r, include=F}
 mean(run_lengths >= 102)
