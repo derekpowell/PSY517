@@ -22,9 +22,10 @@ header-includes:
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 set.seed(1623464)
+
+## <!-- This lecture borrows heavily from Statistical Rethinking Ch.3 and Bayes Rules! Ch.3  -->
 ```
 
-<!-- This lecture borrows heavily from Statistical Rethinking Ch.3 and Bayes Rules! Ch.3  -->
 
 ## Bayes' rule
 

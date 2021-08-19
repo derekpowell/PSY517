@@ -88,6 +88,10 @@ z - mean # Error: non-numeric argument to binary operator
 
 data$congruent # Error: object of type 'closure' is not subsettable
 
+## What if things go really wrong?
+
+# Session --> Restart R
+
 ### --------------
 
 ## some tricky stuff (the sharp bits)
@@ -97,7 +101,7 @@ mean(c(1,2,3,4,5,NA)) # returns NA
 y[6] # returns NA (there is nothing in the 6th index)
 
 sqrt(2)
-print(sqrt(2), digits=20) # wikipedia says 1.4142135623730950488…
+print(sqrt(2), digits=20) # wikipedia says 1.4142135623730950488???
 
 2 - sqrt(2)^2 # = 0?
 
