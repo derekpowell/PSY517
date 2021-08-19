@@ -43,7 +43,8 @@ df <- df_feat %>%
     summarize(rt = mean(`RT(ms)`), se = sd(`RT(ms)`)/sqrt(n()-1)) %>%
     rename(subject=Subject) %>% 
     mutate(condition="conjunction", subject=as.character(subject))
-  ) %>% filter(subject!="rm", subject!="4")
+  ) %>% 
+  filter(subject!="rm", subject!="4") # these are wild
 ```
 
 ```{r}

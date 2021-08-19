@@ -2,12 +2,12 @@
 author: Derek Powell
 title: "Introduction to R"
 subtitle: "PSY517 Quantitative Analysis III"
-date: "August 2, 2021"
+date: "Module 1"
 output:
   beamer_presentation:
     keep_tex: no
     theme: metropolis
-    latex_engine: xelatex
+    latex_engine: lualatex
     slide_level: 2
     incremental: no
 fontsize: 10pt
@@ -16,6 +16,7 @@ header-includes:
   \setbeamercolor{frametitle}{bg=gray}
   \setbeamercolor{background canvas}{bg=white}
   \hypersetup{colorlinks, citecolor=orange, filecolor=red, linkcolor=brown, urlcolor=blue}
+  # \setbeameroption{show notes on second screen=right}
 ---
 
 
@@ -24,32 +25,35 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
  
 # this looks a bit off need to work out good defaults
-theme_set(theme_gray(base_size=28))
+theme_set(theme_gray(base_size=10))
 ```
 
+## Why R? (or, why am I doing this to you?)
 
+::: notes
+poll class
+
+- how many, when you heard class would use R, felt excited?
+   - how many felt worried?
+- how many have used R? what have you done with it?
+- How was the LSR reading?
+
+:::
 
 ## Why R? (or, why am I doing this to you?)
 
 * R is a powerful tool for statistics
-  * Packages exist for virtually any statistical analysis you can imagine
-  * We will substitute programming in place of mathematical prowess
 * R is a powerful tool for data management
   * Scripts and automation reduce errors, reduce tedium, and make analyses reproducible
 * Programming is where the \$\$\$ is at
   * Basic programming knowledge is becoming a necessity in industry and academia
 * R has a great community, tons of support, and is really not that hard to learn
+* We will substitute programming in place of math to understand statistics
 
 ## Kicking ass
 
 ```{r kick-ass, fig.align='center', out.height="80%", fig.cap = "The Kick-Ass curve"}
 knitr::include_graphics("../images/kick-ass-curve.jpg")
-```
-
-## Rstudio tour
-
-```{r rstudio, fig.align='center', out.height="80%", fig.cap = "The Rstudio interface"}
-knitr::include_graphics("../images/rstudio-interface-init.png")
 ```
 
 ## Let's jump in
@@ -63,11 +67,18 @@ I'll show you ...
 * how to plot data
 * how to conduct a statistical test
 
+## Rstudio tour
+
+```{r rstudio, fig.align='center', out.height="80%", fig.cap = "The Rstudio interface"}
+knitr::include_graphics("../images/rstudio-interface-init.png")
+```
+
+
 # Interactive coding demo
 
 Let's jump over to Rstudio, open a script, and run some code.
 
-## Loading packages 📦
+## Loading packages
 
 R "packages" are collections of code, functions, and data that have been packaged together. Typically, packages support conducting certain types of analyses, making plots, etc.
 
@@ -79,10 +90,17 @@ library(tidyverse)
 
 ## Loading data
 
-Let's load some data.
-
-```{r load-stroop, echo=T, message=F}
+```r
 df <- read_csv("stroop-2014.csv")
+```
+
+- Load data from Daniel Lakens' introductory psychology course. 
+- Students performed the classic "Stroop" task: name ink color that congruent or incongruent words were printed in 
+  - (e.g. The word "Green" printed in green versus yellow ink). 
+- Reading interferes with color naming, so it takes longer to name the ink color when the word it is printing is "incongruent"
+
+```{r load-stroop, include=F}
+df <- read_csv("../data/stroop-2014.csv")
 ```
 
 ## Inspecting data with `head()`
@@ -93,51 +111,44 @@ We can inspect our data with the `head()` function.
 head(df)
 ```
 
-## Checking for missing values
-
-First let's check if we are missing any values. 
-
-
-```{r check-na, echo=T}
-any(is.na(df))
-```
-
-
-It looks like we aren't missing any data.
-
-1. I passed our `df` object to the `is.na()` function, which will gave  a matrix of `TRUE/FALSE` values indicating whether the value was missing or not. 
-2. Then I passed the output of `is.na()` into the `any()` function, which tells us if any of the values we give it are `TRUE`.
-
 ## Indexing from dataframes
 
 Our `df` object is a dataframe that consists of multiple variables. We can "index" or extract those variables using the `$` operator. Let's pull out the congruent trial data.
 
-```{r indexing-vars, echo=T}
+```r
+df$congruent
+```
+
+\scriptsize
+
+```{r indexing-vars, echo=F}
 df$congruent
 ```
 
 ## Using and defining functions
 
-We can compute the mean of our congruent trials with:
+We can compute the mean and standard deviation of our congruent trials with:
 
 ```{r cong-mean, echo=T}
 mean(df$congruent)
+sd(df$congruent)
 ```
 
-Note that `mean()`, `any()`, and `is.na()` on the previous slides are _functions_ that perform some computation on whatever inputs they are given.
+Note that `mean()` and `sd()` are _functions_ that perform some computation on whatever inputs they are given.
 
 R includes many built-in functions, but sometimes we would like to do something new and unique. In those cases, we can define our own functions.
 
 ## Defining functions
 
 One major omission in R is a built-in function to compute the standard error of a variable. R has a function `sd()` to compute the standard deviation, but nothing for the standard error. Recall, the formula for the standard error is:
+
 $$SE = \frac{\sigma}{\sqrt{n}}$$
 Let's make our own standard error function in R, named `se()`.
 
 ```{r def-se, echo=T}
-se <- function(x){
-  sd(x) / sqrt(length(x))
-  }
+  se <- function(x){
+    sd(x) / sqrt(length(x))
+    }
 ```
 
 To learn more about this function, try typing `?sqrt` and `?length` into the R console.
@@ -198,6 +209,19 @@ How would you create a function to standardize a variable based on the equation?
 $$Z = \frac{x-\mu}{\sigma}$$
 
 # Working with data
+
+## Checking for missing values
+
+First let's check if we are missing any values. 
+
+```{r check-na, echo=T}
+any(is.na(df))
+```
+
+It looks like we aren't missing any data.
+
+1. I passed our `df` object to the `is.na()` function, which will gave  a matrix of `TRUE/FALSE` values indicating whether the value was missing or not. 
+2. Then I passed the output of `is.na()` into the `any()` function, which tells us if any of the values we give it are `TRUE`.
 
 ## Removing cases with `filter()`
 
@@ -274,10 +298,9 @@ df %>%
   ```
 - This lets us string commands together, as shown here
 
-
 :::
 ::: {.column}
-
+### Example
 \scriptsize
 ```r
 df %>% 
@@ -301,7 +324,7 @@ df %>%
 :::::::::::::: {.columns align=center}
 ::: {.column}
 
-"Tidy" data is data stored in "long" rather than "wide" format.
+The same data can be stored in different formats.
 
 - __Wide format__: each row of a data table is a case with many variables. 
 - __Long format__: each row stores the value for one variable of one case.
@@ -357,6 +380,7 @@ df_wide %>%
   arrange(subj_num) %>% 
   print(n=6)
 ```
+
 ## Pivot functions
 
 A recent update to the `tidyverse` is the introduction of the `pivot_longer()` and `pivot_wider()` functions.
@@ -394,7 +418,7 @@ df_long %>%
 ::: {.column width="60%"}
 
 \small
-```{r boxplot-example, echo=T, out.width="80%", fig.align='center'}
+```{r boxplot-example, echo=T, fig.dim = c(2,2), fig.align='center'}
 df_long %>% 
   ggplot(aes(x=trial_type, y=rt)) +
   geom_boxplot()
@@ -406,7 +430,7 @@ df_long %>%
 
 ## Plotting summarized data
 
-```{r summ-plot-ex, echo=T,  out.height="50%", fig.align='center'}
+```{r summ-plot-ex, echo=T,  fig.dim = c(3,2), fig.align='center'}
 df_long %>% 
   group_by(trial_type) %>% 
   summarize(mean_rt = mean(rt), se_rt = se(rt)) %>% 
@@ -542,11 +566,23 @@ ggplot(aes(x = congruent, y = incongruent)) +
 :::
 ::::::::::::::
 
-# Performing a t-test
+# Doing statistics
+
+## Performing a t-test
 
 \small
+
 ```{r ttest, echo=T}
 t.test(df$congruent, df$incongruent, paired=TRUE)
+```
+
+## Basic linear regression
+
+\scriptsize
+
+```{r linreg, echo=T}
+fit <- lm(incongruent ~ congruent, data=df)
+summary(fit)
 ```
 
 # Hands-on exercise: Data in the wild
@@ -555,11 +591,10 @@ t.test(df$congruent, df$incongruent, paired=TRUE)
 
 ### In Experiment 1 of this study:
 
-- Researchers presented children (aged XX to XX) with two food options
-- They told the children that one of the foods was healthy and the other was unhealthy
+- Researchers presented children with two food options: one "healthy" and one "unhealthy"
 - Then they left children alone with the food and allowed them to eat if they wanted
 - A research assistant observed through a camera and recorded the number of bites the children took
-- After each child finished, reseachers weighed the remaining food in the dish to calculate how many grams of food the children ate
+- After each child finished, researchers weighed the remaining food in the dish to calculate how many grams of food the children ate
 
 ## Hands-on: Loading the data
 
@@ -569,9 +604,8 @@ The data is stored in the file `dejesus-example.csv`.
 
 ```{r, include=F}
 library(tidyverse)
-dejesus<-read_csv("dejesus-example.csv")
+dejesus_raw <- read_csv("../data/dejesus-example.csv")
 ```
-
 
 ### Data processing goals
 
@@ -586,9 +620,11 @@ Let's create a new tibble called `dejesus_cleaned` where we
 ### Variables we'd like
 
 * `child_id`: participant number for each child
-* `condition`: whether the child was told the food was healthy
+* `condition`: whether the child was told the food was healthy or unhealthy
 * `bites`: how many bites the child took
 * `grams`: how much of the food they ate (g)
+* `age`: age of the children in years
+* `gender`: gender of the children
 
 ### Instructions
 
@@ -600,14 +636,15 @@ Let's create a new tibble called `dejesus_cleaned` where we
 I didn't show you `select()`, take a look at the help with `?select` to learn about it.
 
 ```{r, include=F}
-dejesus_cleaned <- dejesus %>% 
+dejesus <- dejesus_raw %>% 
   filter(study=="1_healthy_unh", trial==2) %>% 
   rename(child_id = pnum, condition = food_gen) %>% 
-  select(child_id, condition, bites, grams)
+  select(child_id, condition, bites, grams, age, gender)
 ```
 
 ::: notes
-* why bother renaming things? did you know what food_gen meant? presumably the authors do, but it could be hard to remember
+- why bother renaming things? did you know what food_gen meant? 
+- presumably the authors do, but it could be hard to remember
 :::
 
 ## Hands-on: Inspecting the data
@@ -630,49 +667,41 @@ Now use the tools you've just learned to do some data sleuthing.
 :::
 ::::::::::::::
 
-::: notes
-
-scale is supposed to have .1g accuracy, which means 1sd to measurements. .1 to .2 is within 1-2sd. if we think a .5g bite is possible, then .3g observation could be 2sd off a .5g bite, rather than 3sd off a 0g bite. But it's hard to know without knowing the accuracy of the "bite" observers. 
-
-We could treat this as a statistical inference problem, but lets save ourselves for more intresting issues. We can probably safely recode the .1 and .2 on zero bites as zeros. It's not as clear what to do with the .3 on 1 bite.
-
-:::
 
 ```{r, include=F}
-any(is.na(dejesus_cleaned))
+any(is.na(dejesus))
 
-head(dejesus_cleaned)
+head(dejesus)
 
 # can't be any grams gone if zero bites
-dejesus_cleaned %>% 
+dejesus %>% 
   filter(bites==0, grams > 0) %>% 
   count(grams)
 
 # can we trust the bites coding? let's look at what 1 bite looks like
 
 # was 42, healthier miscoded? maybe, tho probably not
-dejesus_cleaned %>% 
+dejesus %>% 
   filter(bites==1, grams < 1) %>% 
   count(grams)
 ```
+
 ::: notes
 
 Want them to:
-
-* clean up variable naming
-* deal with NAs
-* notice impossible values
-* fix them carefully (check if what we do is safe)
-* finally, make a plot
-* maybe, do a test
+- check for NA
+- notice impossible values
+- maybe fix them
+- make a plot
+- do a test
 :::
 
 ## Hands-on: Inspecting with plotting
 
 Plotting can help us look for outliers or possible data-entry errors.
 
-```{r inspect-plot, echo=T, fig.align='center', out.height="50%"}
-dejesus_cleaned %>% 
+```{r inspect-plot, echo=T, fig.align='center', fig.dim= c(3,2)}
+dejesus %>% 
   ggplot(aes(x=bites, y = grams)) +
   geom_point()
 ```
@@ -686,12 +715,16 @@ dejesus_cleaned %>%
 `if_else(condition, value_if_true, value_if_false)`
 
 ```{r, echo=T}
-dejesus_cleaned <- dejesus_cleaned %>% 
+dejesus_cleaned <- dejesus %>% 
   mutate(
     grams = if_else(bites==0, 0, grams)
     )
 ```
 
+::: notes
+- scale is supposed to have .1g accuracy, which means 1sd to measurements. .1 to .2 is within 1-2sd. if we think a .5g bite is possible, then .3g observation could be 2sd off a .5g bite, rather than 3sd off a 0g bite. But it's hard to know without knowing the accuracy of the "bite" observers. 
+- We could treat this as a statistical inference problem, but lets save ourselves for more intresting issues. We can probably safely recode the .1 and .2 on zero bites as zeros. It's not as clear what to do with the .3 on 1 bite.
+:::
 
 ```{r, include=F}
 ## are there any other suspicious values? we could look at a scatterplot
@@ -719,6 +752,58 @@ dejesus_cleaned %>%
   geom_jitter(width=.1) +
   theme(legend.position = "none")
 ```
+
+## Hands-on: Descriptives
+
+- Calculate the gender and age breakdown of the children
+
+::: notes
+`summary(dejesus$age)`
+
+`dejesus %>% count(gender)`
+:::
+
+## Hands-on: Plotting the data
+
+- Plot the bites and/or grams eaten data by condition
+- Try a few different approaches: `geom_boxplot()`, `geom_violin()`, `geom_jitter()`
+- Try plotting mean with standard error bars
+
+```{r, include=F}
+ggplot(dejesus, aes(x=condition, y = bites)) + 
+  geom_jitter(width=.2, height=0) 
+```
+
+
+::: notes
+
+`ggplot(dejesus, aes(x=grams)) + geom_histogram()`
+
+`ggplot(dejesus) %>% aes(x=condition, y = bites) + geom_jitter(width=.2)`
+
+:::
+
+## Hands-on: A basic linear model
+
+- Use `lm()` to fit a simple linear regression model predicting grams eaten from number of bites the children took.
+- From the output of the regression, what is the expected size of a bite in grams?
+- Does the model's intercept make sense?
+
+## Hands-on: A statistical test
+
+- I already showed you a t-test, so try using a non-parametric test with `wilcox.test()` to compare the groups in terms of grams or bites
+
+## The path to kicking ass
+
+- You have now seen all the basic workflow steps for doing statistics with R
+  - loading data
+  - processing data
+  - plotting data
+  - making models and performing tests
+  
+::: notes
+- discuss homework submission
+:::
 
 # Extra slides
 
