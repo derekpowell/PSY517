@@ -23,7 +23,7 @@ header-includes:
 ```{r setup, include=F}
 knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
- 
+
 # this looks a bit off need to work out good defaults
 theme_set(theme_gray(base_size=10))
 ```
@@ -90,13 +90,15 @@ library(tidyverse)
 
 ## Loading data
 
+Let's load some data.
+
 ```r
 df <- read_csv("stroop-2014.csv")
 ```
 
-- Load data from Daniel Lakens' introductory psychology course. 
-- Students performed the classic "Stroop" task: name ink color that congruent or incongruent words were printed in 
-  - (e.g. The word "Green" printed in green versus yellow ink). 
+- Load data from Daniel Lakens' introductory psychology course.
+- Students performed the classic "Stroop" task: name ink color that congruent or incongruent words were printed in
+  - (e.g. The word "Green" printed in green versus yellow ink).
 - Reading interferes with color naming, so it takes longer to name the ink color when the word it is printing is "incongruent"
 
 ```{r load-stroop, include=F}
@@ -212,7 +214,7 @@ $$Z = \frac{x-\mu}{\sigma}$$
 
 ## Checking for missing values
 
-First let's check if we are missing any values. 
+First let's check if we are missing any values.
 
 ```{r check-na, echo=T}
 any(is.na(df))
@@ -220,7 +222,7 @@ any(is.na(df))
 
 It looks like we aren't missing any data.
 
-1. I passed our `df` object to the `is.na()` function, which will gave  a matrix of `TRUE/FALSE` values indicating whether the value was missing or not. 
+1. I passed our `df` object to the `is.na()` function, which will gave  a matrix of `TRUE/FALSE` values indicating whether the value was missing or not.
 2. Then I passed the output of `is.na()` into the `any()` function, which tells us if any of the values we give it are `TRUE`.
 
 ## Removing cases with `filter()`
@@ -231,13 +233,13 @@ We will use the "pipe" operator ` %>% ` to pipe our data (`df`) to the `filter()
 
 \small
 ```r
-df %>% 
+df %>%
   filter(subj_num != 3)
 ```
 
 ```{r}
-df %>% 
-  filter(subj_num != 3) %>% 
+df %>%
+  filter(subj_num != 3) %>%
   print(n=4)
 ```
 \normalsize
@@ -248,7 +250,7 @@ Things might feel more scientific if we store our response time measures as mill
 
 \scriptsize
 ```r
-df %>% 
+df %>%
   mutate(
     congruent_ms = congruent*1000,
     incongruent_ms = incongruent*1000
@@ -256,11 +258,11 @@ df %>%
 ```
 
 ```{r, echo=F}
-df %>% 
+df %>%
   mutate(
     congruent_ms = congruent*1000,
     incongruent_ms = incongruent*1000
-  ) %>% 
+  ) %>%
   print(n=6)
 ```
 \normalsize
@@ -271,13 +273,13 @@ Maybe we'd like to capitalize our condition name variables.
 
 \small
 ```r
-df %>% 
+df %>%
   rename(Incongruent = incongruent, Congruent = congruent)
 ```
 
 ```{r}
-df %>% 
-  rename(Incongruent = incongruent, Congruent = congruent) %>% 
+df %>%
+  rename(Incongruent = incongruent, Congruent = congruent) %>%
   print(n=6)
 ```
 \normalsize
@@ -288,11 +290,11 @@ df %>%
 ::: {.column}
 
 - The `%>%` operator pipes the output of one function into the next function as its first argument.
-- For example, 
+- For example,
   ```r
   any(is.na(df))
   ```
-  is the same as 
+  is the same as
   ```r
   df %>% is.na() %>% any()
   ```
@@ -303,16 +305,16 @@ df %>%
 ### Example
 \scriptsize
 ```r
-df %>% 
-  filter(subj_num != 3) %>% 
+df %>%
+  filter(subj_num != 3) %>%
   mutate(
     congruent_ms = congruent*1000,
     incongruent_ms = incongruent*1000
-  ) %>% 
+  ) %>%
   rename(
-    Incongruent = incongruent, 
+    Incongruent = incongruent,
     Congruent = congruent
-    ) 
+    )
 ```
 \normalsize
 :::
@@ -326,7 +328,7 @@ df %>%
 
 The same data can be stored in different formats.
 
-- __Wide format__: each row of a data table is a case with many variables. 
+- __Wide format__: each row of a data table is a case with many variables.
 - __Long format__: each row stores the value for one variable of one case.
 
 :::
@@ -335,8 +337,8 @@ The same data can be stored in different formats.
 ### Wide format
 | case | x | y |
 |------|------|------|
-| a    | 2    | 4    | 
-| b    | 3    | 6    | 
+| a    | 2    | 4    |
+| b    | 3    | 6    |
 
 ### Long format
 | case | variable | value |
@@ -354,14 +356,14 @@ The same data can be stored in different formats.
 Let's convert our data from wide to long format using the `gather()` function.
 
 ```{r wide-to-long, echo=T}
-df_long <- df %>% 
+df_long <- df %>%
   gather(trial_type, rt, congruent, incongruent)
 ```
 
 ```{r}
 # see what happened
-df_long %>% 
-  arrange(subj_num) %>% 
+df_long %>%
+  arrange(subj_num) %>%
   print(n=6)
 ```
 
@@ -370,14 +372,14 @@ df_long %>%
 Sometimes wide data is what we want. We can convert long data to wide data with the `spread()` function.
 
 ```{r long-to-wide, echo=T}
-df_wide <- df_long %>% 
+df_wide <- df_long %>%
   spread(trial_type, rt)
 ```
 
 ```{r}
 # see what happened
-df_wide %>% 
-  arrange(subj_num) %>% 
+df_wide %>%
+  arrange(subj_num) %>%
   print(n=6)
 ```
 
@@ -396,8 +398,8 @@ I don't expect we will benefit from the extra complexity of `pivot_wider()` and 
 * `summarize()` can be used with functions that take a vector input (from each group) and output a single number
 
 ```{r summ-example, echo=T}
-df_long %>% 
-  group_by(trial_type) %>% 
+df_long %>%
+  group_by(trial_type) %>%
   summarize(mean_rt = mean(rt), se_rt = se(rt))
 ```
 
@@ -419,7 +421,7 @@ df_long %>%
 
 \small
 ```{r boxplot-example, echo=T, fig.dim = c(2,2), fig.align='center'}
-df_long %>% 
+df_long %>%
   ggplot(aes(x=trial_type, y=rt)) +
   geom_boxplot()
 ```
@@ -431,10 +433,10 @@ df_long %>%
 ## Plotting summarized data
 
 ```{r summ-plot-ex, echo=T,  fig.dim = c(3,2), fig.align='center'}
-df_long %>% 
-  group_by(trial_type) %>% 
-  summarize(mean_rt = mean(rt), se_rt = se(rt)) %>% 
-  mutate(ul = mean_rt + se_rt, ll = mean_rt- se_rt) %>% 
+df_long %>%
+  group_by(trial_type) %>%
+  summarize(mean_rt = mean(rt), se_rt = se(rt)) %>%
+  mutate(ul = mean_rt + se_rt, ll = mean_rt- se_rt) %>%
   ggplot(aes(x=trial_type, y = mean_rt, ymin=ll, ymax=ul)) +
   geom_pointrange()
 ```
@@ -517,14 +519,14 @@ df_long %>%
 ```r
 corr_val <- cor(df$congruent, df$incongruent)
 
-df %>% 
-ggplot(aes(x = congruent, y = incongruent)) + 
+df %>%
+ggplot(aes(x = congruent, y = incongruent)) +
   geom_smooth(method="lm", alpha=.2) +
   geom_point() +
   annotate(
-    "text", 
-    x = 20, y = 13, 
-    label=paste("r =", round(corr_val,3)), 
+    "text",
+    x = 20, y = 13,
+    label=paste("r =", round(corr_val,3)),
     size = 6) +
   theme_bw(base_size=16) +
   theme(
@@ -532,7 +534,7 @@ ggplot(aes(x = congruent, y = incongruent)) +
     panel.grid = element_blank()
     ) +
   labs(
-    x = "Congruent RT (s)", 
+    x = "Congruent RT (s)",
     y = "Incongruent RT (s)"
     )
 ```
@@ -544,14 +546,14 @@ ggplot(aes(x = congruent, y = incongruent)) +
 ```{r plot, message=F, fig.align='center', out.width="100%", fig.cap="Scatterplot of Stroop task response times"}
 corr_val <- cor(df$congruent, df$incongruent)
 
-df %>% 
-ggplot(aes(x = congruent, y = incongruent)) + 
+df %>%
+ggplot(aes(x = congruent, y = incongruent)) +
   geom_smooth(method="lm", alpha=.2) +
   geom_point() +
   annotate(
-    "text", 
-    x = 20, y = 13, 
-    label=paste("r =", round(corr_val,3)), 
+    "text",
+    x = 20, y = 13,
+    label=paste("r =", round(corr_val,3)),
     size = 8) +
   theme_bw(base_size=28) +
   theme(
@@ -559,7 +561,7 @@ ggplot(aes(x = congruent, y = incongruent)) +
     panel.grid = element_blank()
     ) +
   labs(
-    x = "Congruent RT (s)", 
+    x = "Congruent RT (s)",
     y = "Incongruent RT (s)"
     )
 ```
@@ -632,18 +634,18 @@ Let's create a new tibble called `dejesus_cleaned` where we
 2. Filter for the 2nd trial from Exp. 1 using `filter()` (Exp. 1 is called "1_healthy_unh")
 3. Rename variables to be a bit clearer using `rename()`
 4. Remove unnecessary variables with `select()`
-  
+
 I didn't show you `select()`, take a look at the help with `?select` to learn about it.
 
 ```{r, include=F}
-dejesus <- dejesus_raw %>% 
-  filter(study=="1_healthy_unh", trial==2) %>% 
-  rename(child_id = pnum, condition = food_gen) %>% 
+dejesus <- dejesus_raw %>%
+  filter(study=="1_healthy_unh", trial==2) %>%
+  rename(child_id = pnum, condition = food_gen) %>%
   select(child_id, condition, bites, grams, age, gender)
 ```
 
 ::: notes
-- why bother renaming things? did you know what food_gen meant? 
+- why bother renaming things? did you know what food_gen meant?
 - presumably the authors do, but it could be hard to remember
 :::
 
@@ -674,15 +676,15 @@ any(is.na(dejesus))
 head(dejesus)
 
 # can't be any grams gone if zero bites
-dejesus %>% 
-  filter(bites==0, grams > 0) %>% 
+dejesus %>%
+  filter(bites==0, grams > 0) %>%
   count(grams)
 
 # can we trust the bites coding? let's look at what 1 bite looks like
 
 # was 42, healthier miscoded? maybe, tho probably not
-dejesus %>% 
-  filter(bites==1, grams < 1) %>% 
+dejesus %>%
+  filter(bites==1, grams < 1) %>%
   count(grams)
 ```
 
@@ -701,7 +703,7 @@ Want them to:
 Plotting can help us look for outliers or possible data-entry errors.
 
 ```{r inspect-plot, echo=T, fig.align='center', fig.dim= c(3,2)}
-dejesus %>% 
+dejesus %>%
   ggplot(aes(x=bites, y = grams)) +
   geom_point()
 ```
@@ -715,38 +717,38 @@ dejesus %>%
 `if_else(condition, value_if_true, value_if_false)`
 
 ```{r, echo=T}
-dejesus_cleaned <- dejesus %>% 
+dejesus_cleaned <- dejesus %>%
   mutate(
     grams = if_else(bites==0, 0, grams)
     )
 ```
 
 ::: notes
-- scale is supposed to have .1g accuracy, which means 1sd to measurements. .1 to .2 is within 1-2sd. if we think a .5g bite is possible, then .3g observation could be 2sd off a .5g bite, rather than 3sd off a 0g bite. But it's hard to know without knowing the accuracy of the "bite" observers. 
+- scale is supposed to have .1g accuracy, which means 1sd to measurements. .1 to .2 is within 1-2sd. if we think a .5g bite is possible, then .3g observation could be 2sd off a .5g bite, rather than 3sd off a 0g bite. But it's hard to know without knowing the accuracy of the "bite" observers.
 - We could treat this as a statistical inference problem, but lets save ourselves for more intresting issues. We can probably safely recode the .1 and .2 on zero bites as zeros. It's not as clear what to do with the .3 on 1 bite.
 :::
 
 ```{r, include=F}
 ## are there any other suspicious values? we could look at a scatterplot
-dejesus_cleaned %>% 
+dejesus_cleaned %>%
   ggplot(aes(x=bites, y = grams)) +
   geom_jitter(width=.1)
 
-## we can spot a weird point for bites = 3, let's see what it really is 
-## now what to make of 3 bites for .9g? and 2 bites for 
-dejesus_cleaned %>% 
-  filter(bites==3 | bites==2) %>% 
+## we can spot a weird point for bites = 3, let's see what it really is
+## now what to make of 3 bites for .9g? and 2 bites for
+dejesus_cleaned %>%
+  filter(bites==3 | bites==2) %>%
   arrange(grams)
 
 ## Maybe we should drop those two funky values as unreliable
-dejesus_cleaned <- dejesus_cleaned %>% 
+dejesus_cleaned <- dejesus_cleaned %>%
   mutate(
     grams = ifelse(bites==0, 0, grams),
     grams = ifelse(bites > 1 & grams < 1, NA, grams),
     bites = ifelse(bites > 1 & grams < 1, NA, bites),
     )
 
-dejesus_cleaned %>% 
+dejesus_cleaned %>%
   ggplot(aes(x=condition, y = grams, fill=condition)) +
   geom_violin(width=.5) +
   geom_jitter(width=.1) +
@@ -770,8 +772,8 @@ dejesus_cleaned %>%
 - Try plotting mean with standard error bars
 
 ```{r, include=F}
-ggplot(dejesus, aes(x=condition, y = bites)) + 
-  geom_jitter(width=.2, height=0) 
+ggplot(dejesus, aes(x=condition, y = bites)) +
+  geom_jitter(width=.2, height=0)
 ```
 
 
@@ -800,7 +802,7 @@ ggplot(dejesus, aes(x=condition, y = bites)) +
   - processing data
   - plotting data
   - making models and performing tests
-  
+
 ::: notes
 - discuss homework submission
 :::
@@ -814,18 +816,18 @@ The three commands below make the same changes.
 \scriptsize
 
 ```r
-df_long %>% 
+df_long %>%
   mutate(trial_type = ifelse(trial_type=="congruent", "Congrent", "Incongruent"))
 
-df_long %>% 
+df_long %>%
   mutate(
     trial_type = fct_recode(
-      trial_type, 
-      "Congruent"="congruent", 
+      trial_type,
+      "Congruent"="congruent",
       "Incongruent"="incongruent")
     )
 
-df_long %>% 
+df_long %>%
   mutate(
     trial_type = case_when(
       trial_type=="congruent" ~ "Congruent",
