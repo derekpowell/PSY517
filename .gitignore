@@ -51,3 +51,6 @@ vignettes/*.pdf
 # latex stuff
 *.log
 *.tex
+
+# external files (symlinked to dropbox)
+external-files

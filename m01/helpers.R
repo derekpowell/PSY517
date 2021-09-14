@@ -18,3 +18,11 @@ gghist <- function(x, ...){
     geom_histogram(aes(x=x), ...) +
     theme_bw()
 }
+
+standardize <- function(x){
+ (x-mean(x))/sd(x)
+}
+
+unstandardize <- function(x, x_orig){
+  (x*sd(x_orig))+mean(x_orig)
+}
