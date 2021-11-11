@@ -1,0 +1,877 @@
+---
+author: Derek Powell
+title: "Introduction to Causal Inference"
+subtitle: "PSY517 Quantitative Analysis III"
+date: "Module 4"
+output:
+  beamer_presentation:
+    keep_tex: no
+    theme: metropolis
+    latex_engine: lualatex
+    slide_level: 2
+    incremental: no
+fontsize: 10pt
+classoption: compress
+header-includes:
+  \setbeamercolor{frametitle}{bg=gray}
+  \setbeamercolor{background canvas}{bg=white}
+  \hypersetup{colorlinks, citecolor=orange, filecolor=red, linkcolor=brown, urlcolor=blue}
+  \newcommand*{\indep}{\!\perp\!\!\!\perp\!}
+  \newcommand*{\notindep}{\;\,\backslash\!\!\!\!\!\! \perp\!\!\!\perp\!}
+  \setbeameroption{show notes on second screen=right}
+---
+
+```{r setup, include=F}
+knitr::opts_chunk$set(
+  echo = FALSE, 
+  cache = TRUE, 
+  fig.align='center', 
+  fig.dim=c(4,2), 
+  dev = 'pdf'
+  )
+
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(modelr)
+library(patchwork)
+library(dagitty)
+source("../helpers.R")
+# bikes <- read_csv("../data/bikes.csv")
+
+theme_set(theme_bw(base_size=10) + theme(panel.grid=element_blank()))
+update_geom_defaults("point", list(shape = 1, size=1))
+
+n_cores <- parallel::detectCores()
+```
+
+## What is causation? Regularity
+
+> "We may define a cause to be _an object followed by another, and where all the objects, similar to the first, are followed by objects similar to the second_ ..." ---Hume, 1748
+
+- The Enlightenment-era philosopher David Hume argued that there was really no such thing as causality beyond "constant conjunction" or regularity between the occurrence of events.
+
+## What is causation? Counterfactuals
+
+> "We may define a cause to be _an object followed by another, and where all the objects, similar to the first, are followed by objects similar to the second_. ___Or, in other words, where, if the first object had not been, the second never had existed___" ---Hume, 1748
+
+- But he also let slip another view, later developed much further by the philosopher David Lewis (1973), that causality could be defined in terms of ___counterfactuals___.
+
+::: notes
+There is still plenty of philosophical debate, but this idea of causality is much closer to our modern conception of it within science. 
+:::
+
+## Counterfactuals
+
+- Counterfactuals: What would have happened?
+
+- We can never observe counterfactual outcomes---they are "counter-to-the-facts"
+
+- This often makes causal inference a challenging task!
+
+## Defining a causal effect
+
+- Compare (mentally) the outcome when an action is taken versus the outcome when the action is withheld. 
+
+- If the two outcomes differ, we say that the action has a causal effect on the outcome
+
+- Sometimes called "but-for causation" in legal contexts
+
+::: notes
+- This isn't perfect, doesn't identify "proximal" causes
+
+- Could just be an "enabling condition" --e.g. oxygen present when you strike a match
+
+- Can be infinite (useless) causes--by this definition, an asteroid not impacting the earth "caused" Steve McQueen's cancer b/c it wouldn't have happened otherwise
+
+- So this is kind of a minimum requirement for a definition
+:::
+
+## Estimating an (average) causal effect
+
+- Often hard to say if a particular event or action caused another event (token causation)
+  - Depressing the gas rather than the brake caused the car to crash into the parked car in front of it (clear)
+  - Did smoking _cause_ Steve McQueen to get lung cancer, or was it genetics?
+  - Did taking two Ibuprofen _cause_ my headache to subside, or was it something else?
+
+- But more general claims about causes on average are sometimes easier (type causation)
+  - In general, smoking causes lung cancer
+  - In general, Ibuprofen helps with headaches
+
+## Estimating an (average) causal effect 
+
+- There is a causal effet for Zeus if $Y^{a=0}_{Zeus} \neq Y^{a=1}_{Zeus}$
+
+- There is no causal effect for Hera if $Y^{a=0}_{Hera} = Y^{a=1}_{Hera}$
+
+- When estimating the average effects for a group of people or other units of treatment (type causation), we think of causes probabilistically, so there is an effect if:
+
+$$P(Y^{a=0}) \neq P(Y^{a=1})$$
+
+## Randomized controlled trials
+
+- Participants (or other study units) are randomly assigned to receive different versions of a treatment (intervention)---often, to receive a treatment or not.
+
+- Allows for direct estimation of the causal effect of a treatment
+
+- _Random assignment_ is key: ensures that the groups in each condition will be similar or equivalent _before_ the treatment, so that any differences _after_ can be attributed to the treatment.
+
+## Estimating with a magic wand
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+
+Imagine we had a time machine and could observe each person's outcomes under both treatments. Then we could trivially calculate the average causal effect.
+
+:::
+::: {.column}
+
+\scriptsize
+|            | A | $Y^{a=0}$ | $Y^{a=1}$ |
+|------------|:-:|:--:|:--:|
+| Rheia      | 0 | 0  | 1  |
+| Kronos     | 0 | 1  | 0  |
+| Demeter    | 0 | 0  | 0  |
+| Hades      | 0 | 0  | 0  |
+| Hestia     | 1 | 0  | 0  |
+| Poseidon   | 1 | 1  | 0  |
+| Hera       | 1 | 1  | 0  |
+| Zeus       | 1 | 1  | 1  |
+| Artemis    | 0 | 1  | 1  |
+| Apollo     | 0 | 1  | 1  |
+| Leto       | 0 | 0  | 1  |
+| Ares       | 1 | 1  | 1  |
+| Athena     | 1 | 1  | 1  |
+| Hephaestus | 1 | 0  | 1  |
+| Aphrodite  | 1 | 0  | 1  |
+| Cyclope    | 1 | 0  | 1  |
+| Persephone | 1 | 1  | 1  |
+| Hermes     | 1 | 1  | 0  |
+| Hebe       | 1 | 1  | 0  |
+| Dionysus   | 1 | 1  | 0  |
+
+
+
+:::
+::::::::::::::
+
+## Potential outcomes (Neyman-Rubin causal model)
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+
+- Donald Rubin extended Neyman's 1923 discussion of potential outcomes into a general framework for thinking about causation 
+
+- Turns causal inference into a missing data problem---we are just missing the counterfactual data, or half of the "potential outcomes"
+
+:::
+::: {.column}
+
+\scriptsize
+|            | A | $Y^{a=0}$ | $Y^{a=1}$ |
+|------------|:-:|:--:|:--:|
+| Rheia      | 0 | 0  | ?  |
+| Kronos     | 0 | ?  | 0  |
+| Demeter    | 0 | 0  | 0  |
+| Hades      | 0 | 0  | ?  |
+| Hestia     | 1 | 0  | ?  |
+| Poseidon   | 1 | 1  | 0  |
+| Hera       | 1 | ?  | 0  |
+| Zeus       | 1 | ?  | 1  |
+| Artemis    | 0 | 1  | 1  |
+| Apollo     | 0 | 1  | ?  |
+| Leto       | 0 | ?  | ?  |
+| Ares       | 1 | 1  | ?  |
+| Athena     | 1 | ?  | 1  |
+| Hephaestus | 1 | ?  | 1  |
+| Aphrodite  | 1 | 0  | 1  |
+| Cyclope    | 1 | 0  | 1  |
+| Persephone | 1 | ?  | 1  |
+| Hermes     | 1 | 1  | 0  |
+| Hebe       | 1 | 1  | 0  |
+| Dionysus   | 1 | ?  | 0  |
+ 
+
+:::
+::::::::::::::
+
+
+## Potential outcomes in an RCT
+
+In RCT, data is missing completely at random and so missing data can be ignored.
+
+:::::::::::::: {.columns align=center}
+::: {.column}
+
+\tiny
+|            | A | $Y^{a=0}$ | $Y^{a=1}$ |
+|------------|:-:|:--:|:--:|
+| Rheia      | 0 | 0  | 1  |
+| Kronos     | 0 | 1  | 0  |
+| Demeter    | 0 | 0  | 0  |
+| Hades      | 0 | 0  | 0  |
+| Hestia     | 1 | 0  | 0  |
+| Poseidon   | 1 | 1  | 0  |
+| Hera       | 1 | 1  | 0  |
+| Zeus       | 1 | 1  | 1  |
+| Artemis    | 0 | 1  | 1  |
+| Apollo     | 0 | 1  | 1  |
+| Leto       | 0 | 0  | 1  |
+| Ares       | 1 | 1  | 1  |
+| Athena     | 1 | 1  | 1  |
+| Hephaestus | 1 | 0  | 1  |
+| Aphrodite  | 1 | 0  | 1  |
+| Cyclope    | 1 | 0  | 1  |
+| Persephone | 1 | 1  | 1  |
+| Hermes     | 1 | 1  | 0  |
+| Hebe       | 1 | 1  | 0  |
+| Dionysus   | 1 | 1  | 0  |
+| __Mean__   |   |.50 | .50 |
+
+:::
+::: {.column}
+
+\tiny
+|            | A | $Y^{a=0}$ | $Y^{a=1}$ |
+|------------|:-:|:--:|:--:|
+| Rheia      | 0 | 0  | ?  |
+| Kronos     | 0 | ?  | 0  |
+| Demeter    | 0 | 0  | 0  |
+| Hades      | 0 | 0  | ?  |
+| Hestia     | 1 | 0  | ?  |
+| Poseidon   | 1 | 1  | 0  |
+| Hera       | 1 | ?  | 0  |
+| Zeus       | 1 | ?  | 1  |
+| Artemis    | 0 | 1  | 1  |
+| Apollo     | 0 | 1  | ?  |
+| Leto       | 0 | ?  | ?  |
+| Ares       | 1 | 1  | ?  |
+| Athena     | 1 | 1  | 1  |
+| Hephaestus | 1 | ?  | 1  |
+| Aphrodite  | 1 | 0  | 1  |
+| Cyclope    | 1 | 0  | 1  |
+| Persephone | 1 | ?  | 1  |
+| Hermes     | 1 | 1  | 0  |
+| Hebe       | 1 | 1  | 0  |
+| Dionysus   | 1 | ?  | 0  |
+| __Mean__   |   |.50 | .50 |
+
+:::
+::::::::::::::
+
+
+::: notes
+
+- Outside of RCT, we can no longer think of potential outcomes as missing completely at random. 
+
+- So, we can't just ignore the missingness and directly estimate causal effects, we need to adjust for it
+
+- Frankly, that gets confusing
+:::
+
+## Structural Causal Models
+
+- Introduced by Judea Pearl (2000s and ongoing)
+
+- Represents causal relationships with graphs (diagrams)
+
+- Graphs can be used along with a set of rules called the "do-calculus" to predict outcomes of interventions and determine how to identify causal effects from data 
+
+::: notes
+- Have an even better approach: graphs
+- lack of arrow is the strong claim (jazz is in the notes that aren't played)
+:::
+
+## Directed Acyclic Graphs (DAGs)
+
+```{r}
+dag_ex <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    W [pos="1,0"]
+    V [pos="2,2"]
+    
+    X -> Y -> Z -> V
+    X -> W -> Y -> V
+    W -> Z
+}')
+
+plot(dag_ex)
+```
+
+- Directed (arrows) 
+- Acyclic (no cycles or feedback loops)
+- Graphs (a diagram!)
+
+## Terminology
+
+- ___Parents___: The nodes with edges flowing in to a given node
+
+- ___Children___: For a given node, the nodes its edges point out toward
+
+- ___Ancestors___: A node's parents, its parents' parents, etc.
+
+- ___Descendants___: A node's children, its children's children, etc.
+
+## Dependence and Independence
+
+- We write $X \indep Y$ to indicate that $X$ and $Y$ are independent.
+
+- $X \indep Y$  if and only if $P(X)=P(X|Y)$ and $P(Y)=P(Y|X)$
+
+- $X$ and $Y$ can also be _conditionally independent_ given some other variable(s) $Z$, which we write $X \indep Y|Z$.
+
+## d-separation
+
+- Arrows indicate immediate dependencies between nodes
+
+- d-separation (directed separation) is a criteria for determining whether two nodes are independent
+
+- If nodes are independent of each other, we say they are d-separated
+  - If $X$ and $Y$ are d-separated, then $X \indep Y$
+
+- If nodes are dependent on one another, we say they are d-connected
+  - If $X$ and $Y$ are d-connected, then $X \notindep Y$
+
+- Nodes can also be conditionally d-separated or conditionally d-connected
+
+## Junctions
+
+There are three kinds of elementary structures, or junctions, that might make up larger graphs.
+
+### Chain
+
+```{r, fig.dim=c(3,1)}
+dag_chain <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    
+    X -> Y -> Z
+}')
+
+plot(dag_chain)
+
+```
+
+$X$ and its ancestors are d-connected to $Z$ and its children
+
+### Fork
+
+```{r, fig.dim=c(3,1)}
+dag_fork <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    
+    X <- Y -> Z
+}')
+
+plot(dag_fork)
+```
+
+$X$ and its children are d-connected to $Z$ and its children
+
+### Inverted Fork (collider or v-structure)
+
+```{r, fig.dim=c(3,1)}
+dag_collider <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    
+    X -> Y <- Z
+}')
+
+plot(dag_collider)
+```
+
+$Y$ is a ___collider___. Colliders close paths, so $X$ and its ancestors are d-separated from $Z$ and its ancestors, i.e. $X \indep Z$.
+
+## Conditioning
+
+- Conditioning = controlling for, holding constant, or "once I know".
+
+- Conditioning changes paths, opens or closes them.
+
+- Conditioning on a node at the center of a fork or chain blocks the open path
+
+- Conditioning on a ___collider___ opens the closed path
+
+## Local Markov property
+
+- Conditional on its parent nodes, a child node is independent of all other ancestors.
+
+```{r}
+plot(dag_ex)
+```
+
+::: notes
+For T, don't need to know about X and W if you know about Y and Z
+:::
+
+## Confounding: spurious association
+
+Does marriage cause divorce?
+
+::: notes
+- of course, in some trivial sense it does
+
+- but seems like more marriage could be due to cultural value of marriage, which should mean less divorce right?
+:::
+
+```{r, message=F, results='hide'}
+data("WaffleDivorce", package="rethinking")
+fit_m1 <- brm(Divorce ~ Marriage, data=WaffleDivorce)
+fit_m2 <- brm(Divorce ~ MedianAgeMarriage, data = WaffleDivorce)
+```
+
+```{r}
+plt_marriage_rate <- WaffleDivorce %>%
+  data_grid(Marriage = seq_range(Marriage, n = 100)) %>% 
+  add_epred_interval(fit_m1) %>% 
+  ggplot(aes(x=Marriage, y = .epred)) +
+  geom_line(color="blue") +
+  geom_ribbon(alpha=.2, aes( ymin = .lower, ymax=.upper)) +
+  geom_point(data = WaffleDivorce, aes(y=Divorce)) +
+  theme(aspect.ratio=1) +
+  labs(y = "Divorce rate (per 1000)", x = "Marriage rate (per 1000)")
+
+plt_age <- WaffleDivorce %>%
+  data_grid(MedianAgeMarriage = seq_range(MedianAgeMarriage, n = 100)) %>% 
+  add_epred_interval(fit_m2) %>% 
+  ggplot(aes(x=MedianAgeMarriage, y = .epred)) +
+  geom_line(color="blue") +
+  geom_ribbon(alpha=.2, aes( ymin = .lower, ymax=.upper)) +
+  geom_point(data = WaffleDivorce, aes(y=Divorce)) +
+  theme(aspect.ratio=1) +
+  labs(y = "Divorce rate (per 1000)", x = "Median age at marriage")
+
+plt_marriage_rate
+```
+
+## A potential common cause
+
+Median age at marriage is correlated with both the marriage rate and the divorce rate in each state.
+
+```{r, message=F, fig.dim=c(4,2)}
+plt_age_marriage <- WaffleDivorce %>% 
+  ggplot(aes(x=MedianAgeMarriage, y = Marriage)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  theme(aspect.ratio=1) +
+  labs(x = "Median age at marriage", y = "Marriage rate (per 1000)") 
+
+(plt_age_marriage + plt_age) * 
+  (theme_bw(base_size=7) + theme(panel.grid=element_blank(), aspect.ratio=1) )  + 
+     plot_layout(ncol=2)
+```
+
+## Some possible DAGs
+
+```{r}
+dag1 <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    
+    M -> D <- A
+    A -> M
+}')
+
+
+dag2 <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    
+    A -> D
+    A -> M
+}')
+
+
+dag3 <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    
+    A -> M
+    M -> D
+}')
+
+
+dag4 <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    
+    A -> D
+    M -> D
+}') 
+
+
+dag5 <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    
+    D -> M
+    D -> A
+}')
+```
+
+DAGs showing different relationships between Age of marriage (A), Marriage rate (M), and Divorce rate (D).
+
+:::::::::::::: {.columns align=top}
+::: {.column width="30%"}
+
+__1__
+```{r, fig.dim=c(1,1)}
+plot(dag1)
+```
+
+__4__
+```{r, fig.dim=c(1,1)}
+plot(dag4)
+```
+
+
+:::
+::: {.column width="30%"}
+
+__2__
+```{r, fig.dim=c(1,1)}
+plot(dag2)
+```
+
+__5__
+```{r, fig.dim=c(1,1)}
+plot(dag5)
+```
+:::
+::: {.column width="30%"}
+
+__3__
+```{r, fig.dim=c(1,1)}
+plot(dag3)
+```
+
+
+:::
+::::::::::::::
+
+
+::: notes
+take 20 seconds and think about it, get an answer in your head
+
+- #1 = two related causes (consistent)
+- #2 = common cause / confounded (consistent)
+- #3 = full mediation (consistent)
+- #4 = independent causes (ruled out because implies $A \indep M$)
+- #5 = common effects (seems inconsistent with domain knowledge)
+:::
+
+## Testing implications with models
+
+Model 1: `D ~ M`
+\scriptsize
+```{r}
+fixef(fit_m1)
+```
+\normalsize
+Model 2: `D ~ A`
+\scriptsize
+```{r}
+fixef(fit_m2)
+```
+\normalsize
+Model 3: `D ~ A + M`
+\scriptsize
+```{r, message=F, results='hide'}
+fit_m3 <- brm(Divorce ~ Marriage + MedianAgeMarriage, data = WaffleDivorce)
+```
+
+```{r}
+fixef(fit_m3)
+```
+
+## Confounding
+
+- Multiple regression can be used to "de-confound" relationships
+
+- Here we identified that there is likely no causal relationship between marriage rate and divorce rate
+
+- Instead, association is due to confounding
+
+- But things are only simple if confounders are observed 
+
+## Causal inferences require assumptions
+
+- Does age of marriage really cause divorce? And if so, have we correctly measured that causal link?
+
+- When we estimate it we are assuming a particular causal model, represented by the causal graph. And we are ruling out other causal models with confounding
+
+```{r}
+dag_un <- dagitty('dag {
+    M [pos="1,0"]
+    A [pos="0,0"]
+    D [pos=".5,1"]
+    U [pos="-.5,.5"]
+    
+    U -> A
+    A -> D <- U
+    A -> M
+    
+}')
+
+plot(dag_un)
+```
+
+## The do-operator
+
+- Just because $X \notindep Y$, or $P(Y) \neq P(Y|X)$, this does not imply that $X$ causes $Y$ or vice versa.
+
+- We say $X$ has a causal effect on $Y$ if $P(Y) \neq P(Y|do(X))$
+
+## Graph surgery
+
+- To represent interventions with the do-operator we perform "graph surgery"
+
+- Sever all incoming links to the node that is being intervened on
+
+:::::::::::::: {.columns}
+::: {.column}
+
+```{r, fig.dim = c(2,2)}
+plot(dag_ex)
+```
+
+:::
+::: {.column}
+
+
+```{r, fig.dim=c(2,2)}
+dag_ex_surg <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    W [pos="1,0"]
+    V [pos="2,2"]
+    
+    X -> Y
+    Z -> V
+    X -> W -> Y -> V
+    
+}')
+
+plot(dag_ex_surg)
+```
+
+:::
+::::::::::::::
+
+## Graph surgery in RCT
+
+```{r}
+dag_rct <- dagitty('dag {
+    Instagram [pos="0,1"]
+    Depression [pos="5,1"]
+    SES [pos="1,0"]
+    Exercise [pos="2,0"]
+    Grades [pos="3,0"]
+    Extraversion [pos="4,0"]
+    Friends [pos="5,0"]
+    
+    Instagram -> Depression
+    {SES Exercise Grades Extraversion Friends} -> Instagram
+    {SES Exercise Grades Extraversion Friends} -> Depression
+    
+}')
+
+dag_rct_surg <- dagitty('dag {
+    Instagram [pos="0,1"]
+    Depression [pos="5,1"]
+    SES [pos="1,0"]
+    Exercise [pos="2,0"]
+    Grades [pos="3,0"]
+    Extraversion [pos="4,0"]
+    Friends [pos="5,0"]
+    Random [pos="0,.5"]
+    
+    Instagram -> Depression
+    Random -> Instagram
+    {SES Exercise Grades Extraversion Friends} -> Depression
+    
+}')
+rethinking::drawdag(dag_rct, cex=.75, goodarrow = F, col_arrow = "grey")
+```
+::: notes
+Consider effect of instagram use on teenage depression
+:::
+
+## Graph surgery in RCT
+
+- All parents of manipulated variable are severed, replaced with random assignment (which has no parent causes)
+
+```{r}
+rethinking::drawdag(dag_rct_surg, cex=.75, goodarrow = F, col_arrow = "grey")
+```
+
+# Path analysis
+
+- Introduced by Sewall Wright in a 1920 paper
+
+- A (simpler) form of Structural Equation Modeling, where all variables are directly observed
+
+- A powerful but simple tool for causal inference
+
+## Standardized linear path models
+
+- In a multivariate linear model, each node is defined by a multiple regression of its parents.
+
+- Expected covariance can be calculated by multiplying and summing coefficients along all paths between variables.
+
+- If all variables are standardized, the path coefficients are partial correlations and covariance = correlation.
+
+## An example of a path model
+
+\scriptsize
+```{r}
+# library(lavaan) # did this to get the syntax
+# fit_lavaan <- sem(
+#   "
+#   W ~ a*X
+#   Y ~ b*X + c*W
+#   Z ~ d*W + e*Y
+#   V ~ f*Y + g*Z
+#   ",
+#   data = d1
+# )
+# lavaanToGraph(fit_lavaan)
+
+path_ex <- dagitty('dag {
+    X [pos="0,1"]
+    Y [pos="1,1"]
+    Z [pos="2,1"]
+    W [pos="1,0"]
+    V [pos="2,2"]
+    
+    W -> Y [beta="0.6"]
+    W -> Z [beta="0.3"]
+    X -> W [beta="0.3"]
+    X -> Y [beta="0.4"]
+    Y -> V [beta="-0.4"]
+    Y -> Z [beta="0.7"]
+    Z -> V [beta="-0.1"]
+}')
+
+plot(path_ex, show.coefficients = TRUE)
+```
+## Simulating data from a path model
+
+```{r, echo=T}
+set.seed(13235124)
+N <- 1000
+d1 <- tibble(
+  X = rnorm(N),
+  W = .3*X + rnorm(N),
+  Y = .4*X + .6*W + rnorm(N),
+  Z = .3*W +  .7*Y + rnorm(N),
+  V = -.1*Z + -.4*Y + rnorm(N)
+)
+```
+
+## Path tracing rules
+
+$\text{cov}(X, Y)$ can be calculated by tracing all paths from $X$ to $Y$
+
+### Rules for standardized variables and coefficients
+
+- Trace backward along an arrow and then forward, or simply forwards from one variable to the other but never forward and then back
+- Pass through each variable only once in each chain of paths
+- Trace through at most one two-way arrow in each chain of paths
+
+## Calculating some paths
+
+$$\text{cov}(X, Y) = .4 + (.3)(.6) = .58$$
+```{r, echo=T}
+cov(d1$X, d1$Y)
+```
+
+\begin{align*}
+\text{cov}(W, V) &= \\
+(.6)(-.4) + (.3)(-.1) +(.6)(.7)(-.1) &+ (.3)(.4)(-.4) + (.3)(.4)(.7)(-.1) \\
+&= -.40
+\end{align*}
+
+```{r echo=T}
+cov(d1$W, d1$V)
+```
+
+::: notes
+DRAW THIS OUT ON THE BOARD
+
+Note: I am being a bit lazy as I these are not truly standardized data/coefficients, but they are close enough to illustrate the point without introducing further complications
+:::
+
+## Paths to causes
+
+> "Ok, so this is all great and everything, but it's all just about correlations! What does it mean for causation?"---You, possibly
+
+- The do-operator tells us that, if the model is right, the path coefficients represent causal effects
+
+## Do-operator and path coefficients
+
+- The do-operator tells us that what an intervention is doing is closing all the indirect paths coming through our variable
+
+- So the effect of "doing" will be the path coefficient(s) between cause and effect
+
+- If the model is right and we can estimate the path coefficients, then we can estimate the causal effect
+
+## Back-door criterion
+
+- To deconfound two variables $X$ and $Y$, must block every noncausal path between them without affecting any causal paths
+
+- A ___back-door path___ from $X$ to $Y$ is any path from $X$ to $Y$ that starts with an arrow pointing into $X$. 
+
+- One way to deconfound two variables is to find and condition on a set of variables $Z$ that blocks all of the back-door paths between $X$ and $Y$.
+
+- Need to be careful that $Z$ does not affect any causal paths between $X$ and $Y$.
+
+::: notes
+- can do an example with the paths from the path tracing
+
+- two backdoor paths, both blocked by conditioning on X.
+
+- what about conditioning on Y instead? No good, blocks a causal path
+:::
+
+# Extra slides
+
+
+## Conditioning on a collider
+
+- Conditioning on a ___collider___ opens the path 
+
+- Sometimes called ___Berkson's Paradox___, but it's better thought-of as "explaining away"
+
+```{r, message=F, fig.dim=c(2.5, 2.5)}
+set.seed(1243)
+restaurants <- tibble(
+  location = rnorm(200),
+  food = rnorm(200),
+  success_p = plogis(-1 + location + food),
+  success = if_else(success_p > .55, "successful", "unsuccessful")
+)
+
+restaurants %>% 
+  ggplot(aes(x=location, y =food, color = success)) +
+  stat_smooth(data = filter(restaurants, success=="successful"), geom="line", method="lm", alpha=.5) +
+  geom_point() +
+  scale_color_manual(values=c("blue", "black")) +
+  theme(aspect.ratio = 1, legend.position="none") +
+  labs(x = "Location quality", y = "Food quality")
+
+```
+

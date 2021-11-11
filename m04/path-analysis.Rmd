@@ -1,0 +1,146 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lavaan)
+library(semPlot)
+
+source("path-analysis-load-data.R")
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+d <- df %>% 
+  filter(race!="other") %>% 
+  mutate(
+    black = if_else(race=="white",0,1)
+    ) %>% 
+  drop_na(educ, income, black, sex, par_educ, age) %>%
+  filter(income > 500, age >= 25, age <= 60)
+
+write_csv(d, "gss-example.csv")
+
+dstd <- d %>% 
+  mutate_at(vars(income, educ, par_educ, age), standardize)
+
+```
+
+
+```{r}
+model_code <- '
+educ ~ black + sex + par_educ
+income ~ educ + black + sex + par_educ
+'
+
+fit <- sem(model_code, dstd)
+```
+
+
+```{r}
+model_code <- '
+educ ~ a*black + b*sex + c*par_educ
+income ~ d*educ + e*black + f*sex + g*par_educ
+'
+
+fit <- sem(model_code, dstd)
+```
+
+
+```{r}
+model_code <- '
+educ ~ a*black + b*sex + c*par_educ
+income ~ d*educ + e*black + f*sex + g*par_educ
+total_black := e + a*d 
+total_male := f + b*d
+'
+
+fit <- sem(model_code, dstd)
+```
+
+```{r}
+summary(fit, rsquare=TRUE)
+```
+
+```{r}
+semPaths(fit)
+```
+
+```{r}
+-.426*sd(d$income) # cost of being black
+.11*sd(d$income) # value of being male
+(.381 * (1/sd(d$educ)) ) * sd(d$income) # value of each year of school
+```
+
+### Showing things match with regression
+
+```{r}
+lm(income ~ black + sex + par_educ, dstd)
+lm(income ~ sex + par_educ + black, dstd)
+```
+
+
+Other things to show
+
+- standardized = TRUE
+- se = robust
+- using covariance matrix as data
+
+
+```{r}
+d_cov <- dstd %>% 
+  select(sex, age, black, educ, par_educ, income) %>% 
+  cov(.)
+
+
+fit2 <- sem(model_code, sample.cov=d_cov, sample.nobs = nrow(dstd))
+
+summary(fit2, rsquare=T)
+```
+
+
+---------
+
+
+```{r}
+# library(brms)
+# 
+# fit1 <- brm(income ~ educ + black + sex + parent_school, d)
+```
+
+```{r}
+# add_epred_interval <- function(data, model, values = c(".epred", ".lower", ".upper"), ...){
+#   # only works/tested for brms models
+#   preds <- fitted(model, data, ...) %>% 
+#     as_tibble() %>% 
+#     select(-Est.Error)
+#   
+#   colnames(preds) <- values
+#   
+#   bind_cols(data, preds)
+# }
+# 
+# library(modelr)
+# d %>% 
+#   add_epred_interval(fit1) %>% 
+#   ggplot(aes(x=income, y = .epred)) +
+#   # geom_line(color="blue") +
+#   # geom_ribbon(alpha=.2, aes( ymin = .lower, ymax=.upper)) +
+#   geom_point(aes(y=.epred)) +
+#   theme(aspect.ratio=1)
+```
+
+
+```{r}
+d %>% 
+  select(sex, black, educ, par_educ, income) %>% 
+  drop_na() %>% 
+  pairs()
+
+```
+

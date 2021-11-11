@@ -1,0 +1,237 @@
+---
+title: "SEM"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lavaan)
+library(semPlot)
+
+resid_plot <- function(fit, var_order=NULL){
+  resids <- residuals(fit, type="cor")$cov
+  
+  if (is.null(var_order)){
+    var_order = rownames(resids)
+  }
+  
+  d <- as_tibble(resids, rownames="v1") %>% 
+    gather(v2, val, -v1) %>% 
+    mutate(
+      val=as.numeric(val),
+      v1 = ordered(v1, levels = var_order),
+      v2 = ordered(v2, levels = rev(var_order))
+      )
+  d %>% 
+    ggplot(aes(x=v1, y=v2, fill=val)) +
+    geom_tile() +
+    geom_text(aes(label=round(val,3)), size=3) +
+    scale_fill_distiller(palette="RdBu", limits = c(-1,1)*max(abs(d$val)) ) +
+    theme_minimal() +
+    labs(fill = "Resid.") +
+    theme(
+      axis.text.x = element_text(angle=45, hjust=1),
+      axis.title = element_blank(),
+      aspect.ratio=1
+    )
+}
+
+```
+
+## Miyake et al case study
+
+```{r}
+miyake_cor <- lav_matrix_lower2full(
+  c(1,
+    .32, 1,
+    .23, .32, 1,
+    .23, .08, .12, 1,
+    .22, .19, .00, .15, 1,
+    .24, .11, .21, .34, .27, 1,
+    .15, .17, .11, .12, .26, .22, 1,
+    .11, .13, .06, .10, .09, .04, .19, 1,
+    .07, .09, -.05, .11, .16, .18, .20, .18, 1,
+    .26, .13, .18, .09, .19, .14, .15, 0.01, .10, 1,
+    .08, .10, -.09, .13, .18, .14, .21, .08, .17, -.02, 1,
+    .20, .13, .01, .03, .11, .19, .24, .12, .11, .13, .10, 1,
+    .20, -.07, .07, .29, .06, .19, .02, .18, .01, -.08, .12, .02, 1,
+    .09, .08, -.04, .41, .28, .34, .16, .13, .20, .16, .04, .17, .13, 1,
+    -.03, -.02, .05, -.09, -.03, .12, -.08, -.16, .06, .06, -.18, -.05, -.09, -.14, 1
+    )
+)
+miyake_names <- c("plus_minus", "number_letter", "local_global", "keep_track", "tone_monitor", "letter_memory", "antisaccade", "stop_signal", "stroop", "WCST", "TOH", "RNG_1", "RNG_2", "op_span", "dual_task")
+
+colnames(miyake_cor) <- miyake_names
+rownames(miyake_cor) <- miyake_names
+
+miyake_cov <- miyake_cor
+```
+
+## 3-factor model
+
+```{r}
+model_code_3f <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+'
+
+fit_3f <- cfa(model_code_3f, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 137, 
+              std.lv=TRUE)
+
+summary(fit_3f)
+```
+
+
+```{r}
+model_code_sem1 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+WCST ~ shifting + updating + inhibition
+'
+
+fit_sem1 <- sem(model_code_sem1, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 134, 
+              std.lv=TRUE)
+
+summary(fit_sem1)
+```
+
+```{r}
+model_code_sem2 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+WCST ~ shifting + inhibition
+'
+
+fit_sem2 <- sem(model_code_sem2, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 134, 
+              std.lv=TRUE)
+
+summary(fit_sem2)
+```
+```{r}
+model_code_sem3 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+WCST ~ shifting
+'
+
+fit_sem3 <- sem(model_code_sem3, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 134, 
+              std.lv=TRUE)
+
+# summary(fit_sem3)
+```
+
+```{r}
+model_code_sem4 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+WCST ~ inhibition
+'
+
+fit_sem4 <- sem(model_code_sem4, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 134, 
+              std.lv=TRUE)
+
+# summary(fit_sem4)
+```
+
+```{r}
+model_code_sem5 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+WCST ~~ WCST
+'
+
+fit_sem5 <- sem(model_code_sem5, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 134, 
+              std.lv=TRUE)
+
+# summary(fit_sem5)
+```
+
+```{r}
+AIC(fit_sem1, fit_sem2, fit_sem3, fit_sem4, fit_sem5)
+```
+
+## Tower of Hanoi
+
+```{r}
+model_code_sem1 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+TOH ~ shifting + updating + inhibition
+'
+
+fit_sem1 <- sem(model_code_sem1, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 136, 
+              std.lv=TRUE)
+
+summary(fit_sem1)
+```
+
+```{r}
+model_code_sem2 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+TOH ~ inhibition
+'
+
+fit_sem2 <- sem(model_code_sem2, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 136, 
+              std.lv=TRUE)
+
+summary(fit_sem2)
+```
+
+```{r}
+model_code_sem3 <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+TOH ~~ TOH
+'
+
+fit_sem3 <- sem(model_code_sem3, 
+              sample.cov = miyake_cov, 
+              sample.nobs = 136, 
+              std.lv = TRUE)
+
+```
+
+```{r}
+AIC(fit_sem1, fit_sem2, fit_sem3)
+```
+
+
+
+
+
+
+

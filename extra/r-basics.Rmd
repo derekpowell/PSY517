@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+```
+
+## Variable assignment
+
+Make a new variable called `x` equal to the number 3
+
+```{r}
+
+```
+
+
+Make a second variable called `y` equal to the number 5
+
+```{r}
+
+```
+
+Make a third variable `z` that is the product of `x` and `y`
+
+```{r}
+
+```
+
+Calculate the sum of `x`, `y`, and `z` but do not assign it to a variable, just let it be printed by the chunk below.
+
+```{r}
+
+```
+
+Change the variable `x` so that it is equal to 9.
+
+```{r}
+
+```
+
+Make a second variable called `z2` that is the product of  `x` and `y`. Notice how this compares to `z`.
+
+```{r}
+
+```
+
+Run the code below, then at the console, enter `y`. What happened? Ask yourself why.
+
+```{r}
+y * 10
+```
+
+
+## Working with data (tibbles)
+
+Read in the file `example-data.csv` as a tibble or dataframe called `df`.
+
+```{r}
+
+```
+
+View the data you have read in in whichever way you prefer (e.g. `view()`, `glimpse()`, `head()`, or even `print()`).
+
+Run the code below and then look at `df` again. Has anything changed? Ask yourself why or why not.
+
+```{r}
+# df %>% 
+#   mutate(x, y, z)
+```
+
+Rewrite the code chunk above so that the changes actually affect `df`.
+
+```{r}
+
+```
+
+Uncomment the code in the chunk below and run it. What happens? 
+
+```{r}
+
+```
+
+Ask yourself: What's going on here? 
+
+Create a new variable `xyz` that contains the `xyz` values in the `df` data.
+
+```{r}
+
+```
+

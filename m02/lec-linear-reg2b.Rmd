@@ -1,0 +1,191 @@
+---
+author: Derek Powell
+title: "Multiple Linear Regression and Model Comparison"
+subtitle: "PSY517 Quantitative Analysis III"
+date: "Module 2"
+output:
+  beamer_presentation:
+    keep_tex: yes
+    theme: metropolis
+    latex_engine: lualatex
+    slide_level: 2
+    incremental: no
+fontsize: 10pt
+classoption: compress
+header-includes:
+  - \setbeamercolor{frametitle}{bg=gray}
+  - \setbeamercolor{background canvas}{bg=white}
+  - \hypersetup{colorlinks, citecolor=orange, filecolor=red, linkcolor=brown, urlcolor=blue}
+  # - \setbeameroption{show notes on second screen=right}
+---
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = FALSE, cache=FALSE,dev = 'pdf')
+
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(modelr)
+library(patchwork)
+# library(kableExtra)
+
+source("helpers.R")
+bikes <- read_csv("../data/bikes.csv")
+
+theme_set(theme_bw(base_size=10) + theme(panel.grid=element_blank()))
+update_geom_defaults("point", list(shape = 1, size=1))
+```
+
+::: notes
+20m on model comparison theory (10 slides max)
+5m on feature integration theory / visual search (3 slides)
+40m on multiple regression + application of model comparison (30 slides max)
+10m on class business
+:::
+
+## Assessing model fit
+
+Once we fit a model, we want to know: how good is our model?
+
+Some common measures:
+
+- Variance accounted for: $R^2$
+- Probability
+  - log-likelihood (aka deviance)
+  - posterior probability 
+- Cross validation
+- Information criteria
+
+## No alarms and no surprises, please
+
+- A good model means we should not be surprised by new observations.
+
+- __Information theory__ gives us a measure of _surprising-ness_
+
+$$H(p) = -E[log(p_i)]$$
+Can estimate how surprising the observed data are given our model as the log-pointwise-predictive-density, $\text{lppd}$
+
+$$\text{lppd} = \sum_i\frac{1}{S}\sum_s p(y_i|\theta_s)$$
+
+## Generalization
+
+As scientists, we don't just want to describe what is happening in our sample of observations, but also to generalize to new unseen data.
+
+So, we don't just awnt $\text{lppd}$, we want $\text{elppd}$: the expected log posterior predictive density for new data $\tilde{y}$
+
+$$\text{elppd} = \sum_i^N \int{p_t(\tilde{y_i})\: \text{log}\: p(\tilde{y_i}|y)d\tilde{y_i}}$$
+
+Where $p_t(\tilde{y_i})$ is the true probability of new data $\tilde{y_i}$, which we can't know.
+
+## Leave-one-out cross validation
+
+We can estimate the model's generalization performance using __cross validation__.
+
+$$\widehat{\text{elppd}}= \sum_i^N logP_{post}(y_i|y_{-i})$$
+
+- For $n$ observations we create $n$ datasets each with one observation held out
+- $n$ models are fit to each of these $n$ datasets and each time used to predict the held-out observation's value
+
+Schematically:
+
+\small
+```r
+for (i in 1:nrow(df)){
+  d <- df[-i, ]
+  m <- lm(y ~ x, data = d)
+  pred <- predict(m, newdata = df[i, ])
+  compute_error(pred, df$y[i])
+}
+```
+\normalsize
+
+## Variance accounted for $R^2$ 
+
+$$R^2 = \frac{Var(\text{outcome}) - Var(\text{residuals})}{Var(\text{outcome})}$$
+
+- $R^2$ is the "proportion of variance explained" by a model.
+
+- It is an __absolute__ measure of model fit that ranges from 0 (no fit at all) to 1 (perfect fit)
+
+- $R^2$ is very useful, but it is also not to be trusted
+
+- It has no accounting for __model complexity__
+
+## Model complexity
+
+- Model complexity refers to how flexible the model is to accommodate different patterns of data
+- More complex models are more flexible and can fit more different patterns of data
+- Adding more predictors will always increase $R^2$, even if they are not meaningful
+- For instance, an $n-1$ degree polynomial can perfectly fit any $n$ points:
+
+$$\mu_i = \beta_1x + \beta_2x^2 + ... + \beta_{n-1}x^{n-1}$$
+
+## Complex models can predict perfectly (in sample)
+
+```{r, fig.dim=c(4,3), fig.align='center', warning=FALSE}
+df_brain_extra <- tibble( 
+  species=c( "afarensis","africanus","habilis","boisei",
+    "rudolfensis","ergaster","sapiens", "new"),
+  brain=c( 438 , 452 , 612, 521, 752, 871, 1350, 1500 ),
+  mass=c( 37.0 , 35.5 , 34.5 , 41.5 , 55.5 , 61.0 , 53.5, 58 )
+  ) %>% 
+  mutate(
+    x = mass,
+    y = brain
+  )
+
+df_brain <- df_brain_extra %>% 
+  filter(species!="new")
+
+reg_lines <- data_grid(df_brain, x = seq(min(mass)-3, max(mass)+3, length.out=100)) %>% 
+  mutate(
+    p1 = predict(lm(y~x, data=df_brain), newdata= .),
+    p2 = predict(lm(y~poly(x,2), data=df_brain), newdata = .),
+    p3 = predict(lm(y~poly(x,3), data=df_brain), newdata = .),
+    p4 = predict(lm(y~poly(x,4), data=df_brain), newdata = .),
+    p5 = predict(lm(y~poly(x,5), data=df_brain), newdata = .),
+    p6 = predict(lm(y~poly(x,6), data=df_brain), newdata = .),
+  ) %>% 
+  gather(poly_term, pred, p1:p6) %>% 
+  mutate(poly_term = gsub("p","degree = ", poly_term))
+
+ggplot(reg_lines, aes(x=x)) +
+  geom_line(aes(y=pred)) +
+  geom_point(data = df_brain, aes(y=y), color="blue", size=2) +
+  geom_hline(yintercept=0, linetype="dashed") +
+  facet_wrap(~poly_term) +
+  ylim(-500, 2000) +
+  theme(aspect.ratio=1)
+```
+
+
+## reduced models 
+
+:::::::::::::: {.columns}
+::: {.column width=30%}
+
+content 1
+
+:::
+::: {.column width=30%}
+
+content 2
+
+:::
+::: {.column width=30%}
+
+content 3
+
+:::
+::::::::::::::
+
+## A thresholded model
+
+\begin{align*}
+y_i &\sim Bernoulli(p_i) \\
+p_i &= \text{logit}^{-1}( \beta_1 \text{under}_i + \beta_2 \text{over}_i + \beta_3 \text{over}_i \colon \text{true\_beans}_i )
+\end{align*}
+
+- The idea is there is a threshold number of items under which performance is unaffected by the number and is essentially perfect
+
+- Beyond the threshold, performance can start to decline as the number of items increases

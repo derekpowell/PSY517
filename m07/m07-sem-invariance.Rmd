@@ -1,0 +1,221 @@
+---
+title: "Module 7: Advanced SEM"
+subtitle: "Invariance"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lavaan)
+```
+
+
+Items from the CES-D Somatic and Retarded Activity factor
+
+- cesdOl. I was bothered by things that usually don't bother me. 
+- cesdO2. I did not feel like eating; my appetite was poor.
+- cesdO7. I felt that everything I did was an effort
+- cesdll. My sleep was restless
+- cesd20. I could not get "going."
+
+Our results will not be identical b/c we cannot use robust estimators---we need the original data to do that. So can only compare to the ML estimates, which we replicate.
+
+```{r}
+
+var_names <- c("cesd01", "cesd02", "cesd07", "cesd11", "cesd20")
+
+cov_black <- lav_matrix_lower2full(
+  c(
+  0.49587,
+  0.16935, 0.57562,
+  0.19368, 0.17265, 1.29030,
+  0.14082, 0.13106, 0.31683, 0.87469,
+  0.18769, 0.12476, 0.34361, 0.26508, 0.66199
+  )
+)
+
+rownames(cov_black) <- colnames(cov_black) <- var_names
+
+means_black <- c(0.35081, 0.34677, 0.80645, 0.58871, 0.45565)
+
+names(means_black) <- var_names
+
+cov_white <-  lav_matrix_lower2full(
+  c(
+  0.49822,
+  0.12634, 0.42714,
+  0.20046, 0.17796, 0.76513,
+  0.18179, 0.17049, 0.27322, 0.82264,
+  0.16644, 0.16163, 0.31836, 0.24146, 0.63059
+  )
+)
+
+rownames(cov_white) <- colnames(cov_white) <- var_names
+
+means_white <- c(0.32834, 0.24002, 0.48553, 0.61228, 0.43713)
+names(means_white) <- var_names
+```
+
+## Dimensional/configural model
+
+```{r}
+combined_cov <- list(black = cov_black, white = cov_white)
+combined_means <- list(black = means_black, white = means_white)
+
+m_config <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+'
+
+f_config <- cfa(m_config, sample.cov=combined_cov, sample.mean = combined_means, meanstructure=TRUE, sample.nobs = c(248, 2004))
+
+summary(f_config)
+```
+
+## Metric model
+
+```{r}
+m_metric <- '
+somatic =~ c(1,1)*cesd01 + c(b2,w2)*cesd02 + c(b3,w3)*cesd07 + c(b4,w4)*cesd11 + c(b5,w5)*cesd20
+'
+
+f_metric <- cfa(
+  m_metric, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004)
+  )
+
+summary(f_metric)
+```
+
+```{r}
+m_strong <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+'
+
+f_strong <- cfa(
+  m_strong, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004),
+  group.equal = c("loadings", "intercepts")
+  )
+
+summary(f_strong)
+```
+
+```{r}
+AIC(f_config, f_metric, f_strong)
+```
+
+```{r}
+residuals(f_strong, type="cor")
+```
+
+```{r}
+# sometimes easier to get it to pop out
+lavTestScore(f_strong)
+```
+
+## Partial strong invariance
+
+```{r}
+m_p_strong <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+cesd07 ~ c(ta,tb)*1
+'
+
+f_p_strong <- cfa(
+  m_p_strong, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004),
+  group.equal = c("loadings", "intercepts")
+  )
+
+summary(f_p_strong)
+```
+
+```{r}
+AIC(f_config, f_metric, f_strong, f_p_strong)
+```
+
+## partial strict invariance
+
+```{r}
+m_p_strict <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+cesd07 ~ c(ta,tb)*1
+cesd07 ~~ c(ra, rb)*cesd07
+cesd02 ~~ c(rc, rd)*cesd02
+'
+
+f_p_strict <- cfa(
+  m_p_strict, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004),
+  group.equal = c("loadings", "intercepts", "residuals")
+  )
+
+summary(f_p_strict)
+```
+
+## Equal factor means
+
+```{r}
+m_efm <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+cesd07 ~ c(ta,tb)*1
+cesd07 ~~ c(ra, rb)*cesd07
+cesd02 ~~ c(rc, rd)*cesd02
+'
+
+f_efm <- cfa(
+  m_efm, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004),
+  group.equal = c("loadings", "intercepts", "residuals", "means")
+  )
+
+summary(f_efm)
+```
+
+```{r}
+m_efv <- '
+somatic =~ cesd01 + cesd02 + cesd07 + cesd11 + cesd20
+cesd07 ~ c(ta,tb)*1
+
+cesd07 ~~ c(ra, rb)*cesd07
+cesd02 ~~ c(rc, rd)*cesd02
+'
+
+f_efv <- cfa(
+  m_efv, 
+  sample.cov=combined_cov, 
+  sample.mean = combined_means, 
+  meanstructure=TRUE, 
+  sample.nobs = c(248, 2004),
+  group.equal = c("loadings", "intercepts", "residuals", "means", "lv.variances")
+  )
+
+summary(f_efv)
+```
+
+```{r}
+AIC(
+  f_config,
+  f_metric,
+  f_strong,
+  f_p_strong,
+  f_p_strict,
+  f_efm,
+  f_efv
+)
+```

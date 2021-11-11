@@ -1,0 +1,212 @@
+---
+title: "Confirmatory Factor analysis"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lavaan)
+library(semPlot)
+
+resid_plot <- function(fit, var_order=NULL){
+  resids <- residuals(fit, type="cor")$cov
+  
+  if (is.null(var_order)){
+    var_order = rownames(resids)
+  }
+  
+  d <- as_tibble(resids, rownames="v1") %>% 
+    gather(v2, val, -v1) %>% 
+    mutate(
+      val=as.numeric(val),
+      v1 = ordered(v1, levels = var_order),
+      v2 = ordered(v2, levels = rev(var_order))
+      )
+  d %>% 
+    ggplot(aes(x=v1, y=v2, fill=val)) +
+    geom_tile() +
+    geom_text(aes(label=round(val,3)), size=3) +
+    scale_fill_distiller(palette="RdBu", limits = c(-1,1)*max(abs(d$val)) ) +
+    theme_minimal() +
+    labs(fill = "Resid.") +
+    theme(
+      axis.text.x = element_text(angle=45, hjust=1),
+      axis.title = element_blank(),
+      aspect.ratio=1
+    )
+}
+
+```
+
+## Simulating a latent variable
+
+```{r}
+set.seed(1234)
+
+# hide this away
+N <- 1000
+
+dsim <- tibble(
+  Latent = rnorm(N, sd = 3),
+  a = .7*Latent + rnorm(N),
+  b = .5*Latent + rnorm(N),
+  c = -.8*Latent + rnorm(N),
+  d = .6*Latent + rnorm(N)
+)# %>% 
+  #mutate_all(standardize)
+
+```
+
+```{r}
+head(dsim)
+```
+
+
+```{r}
+lm(a ~ 0 + Latent, dsim)
+lm(b ~ 0 + Latent, dsim)
+lm(c ~ 0 + Latent, dsim)
+lm(d ~ 0 + Latent, dsim)
+```
+
+```{r}
+model_code = '
+L_est =~ a + b + c + d
+'
+
+fit <- cfa(model_code, data = dsim, std.lv=TRUE)
+summary(fit)
+```
+
+
+
+```{r}
+dsim %>% 
+  mutate(pred = lavPredict(fit)) %>%
+  ggplot(aes(x=pred, y = Latent)) +
+  geom_point()
+```
+
+```{r}
+cor(dsim$Latent, lavPredict(fit))
+```
+
+
+## Miyake et al case study
+
+```{r}
+miyake_cor <- lav_matrix_lower2full(
+  c(1,
+    .32, 1,
+    .23, .32, 1,
+    .23, .08, .12, 1,
+    .22, .19, .00, .15, 1,
+    .24, .11, .21, .34, .27, 1,
+    .15, .17, .11, .12, .26, .22, 1,
+    .11, .13, .06, .10, .09, .04, .19, 1,
+    .07, .09, -.05, .11, .16, .18, .20, .18, 1,
+    .26, .13, .18, .09, .19, .14, .15, 0.01, .10, 1,
+    .08, .10, -.09, .13, .18, .14, .21, .08, .17, -.02, 1,
+    .20, .13, .01, .03, .11, .19, .24, .12, .11, .13, .10, 1,
+    .20, -.07, .07, .29, .06, .19, .02, .18, .01, -.08, .12, .02, 1,
+    .09, .08, -.04, .41, .28, .34, .16, .13, .20, .16, .04, .17, .13, 1,
+    -.03, -.02, .05, -.09, -.03, .12, -.08, -.16, .06, .06, -.18, -.05, -.09, -.14, 1
+    )
+)
+miyake_names <- c("plus_minus", "number_letter", "local_global", "keep_track", "tone_monitor", "letter_memory", "antisaccade", "stop_signal", "stroop", "WCST", "TOH", "RNG_1", "RNG_2", "op_span", "dual_task")
+
+colnames(miyake_cor) <- miyake_names
+rownames(miyake_cor) <- miyake_names
+
+# miyake_cor <- cor2cov(miyake_cor, c(10.8, 250, 160, .14, .26, .13, .16, .29, 60, 12, 12, 1,1,6, .13))
+miyake_cov <- miyake_cor
+```
+
+## 3-factor model
+
+```{r}
+model_code_3f <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+'
+
+fit_3f <- cfa(model_code_3f, 
+              sample.cov=miyake_cov, 
+              sample.nobs = 137, 
+              std.lv=TRUE)
+
+summary(fit_3f)
+```
+
+- single arrow = factor loadings
+- double-arrow = (co)variances
+- solid lines = estimated values
+- dashed lines = fixed covariances
+
+```{r}
+semPaths(fit_3f, whatLabels="std")
+```
+
+
+# Alternatives
+
+## Single-factor model
+
+```{r}
+model_code_1f <- '
+exec_func =~ plus_minus + number_letter + local_global +  keep_track + tone_monitor + letter_memory + antisaccade + stop_signal + stroop
+'
+
+fit_1f <- cfa(model_code_1f, sample.cov=miyake_cov, sample.nobs = 137, std.lv=TRUE)
+summary(fit_1f)
+```
+
+```{r}
+semPaths(fit_1f)
+```
+
+
+## Independent 3-factor model
+
+```{r}
+model_code_3f_ind <- '
+shifting =~ plus_minus + number_letter + local_global
+updating =~ keep_track + tone_monitor + letter_memory
+inhibition =~ antisaccade + stop_signal + stroop
+
+shifting ~~ 0*updating + 0*inhibition 
+updating ~~ 0*inhibition
+'
+
+fit_3f_ind <- cfa(model_code_3f_ind, sample.cov=miyake_cov, sample.nobs = 137, std.lv=TRUE) # can also add orthogonal = TRUE
+summary(fit_3f_ind)
+```
+
+```{r}
+semPaths(fit_3f_ind)
+```
+
+
+## Model comparison
+
+```{r}
+AIC(fit_3f, fit_3f_ind, fit_1f)
+```
+
+## Diagnosing residuals
+
+```{r}
+resid_plot(fit_3f, miyake_names[1:9])
+```
+
+
+```{r}
+resid_plot(fit_1f, miyake_names[1:9])
+```
+
+
+```{r}
+resid_plot(fit_3f_ind, miyake_names[1:9])
+```
+
